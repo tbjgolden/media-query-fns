@@ -1,0 +1,17 @@
+{
+  "prettier.prettierPath": "node_modules/prettier",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.husky": true,
+    "**/.github": true,
+    "**/.commitlintrc.json": true,
+    "**/.editorconfig": true,
+    "**/.eslintcache": true,
+    "**/.eslintrc.json": true,
+    "**/.prettierignore": true,
+    "**/package-lock.json": true,
+    "**/tsconfig.json": true,
+    "**/jest.config.js": true,
+    "coverage": true
+  }
+}

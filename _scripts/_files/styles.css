@@ -1,0 +1,24 @@
+html,
+body {
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.media-query-fns-outer {
+  padding: 40px;
+}
+
+.media-query-fns-outer > h1 {
+  font-family: monospace;
+  margin-top: 0;
+}
+
+#root {
+  border: 1px dashed #ccc;
+  max-width: 800px;
+  margin: 0 auto;
+  min-height: 400px;
+}
