@@ -1,5 +1,5 @@
-import { hello } from ".";
+import { queryToConditionSets } from ".";
 
-test("hello says hello", () => {
-  expect(hello("world")).toBe(`Hello world!`);
+test("queryToConditionSets", () => {
+  expect(queryToConditionSets("@media (min-width: 120px) {")).toEqual([]);
 });
