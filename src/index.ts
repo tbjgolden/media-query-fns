@@ -9,50 +9,33 @@ import {
   IdentToken,
 } from "media-query-parser";
 
-type CamelifyString<
-  T extends PropertyKey,
-  C extends string = ""
-> = T extends string
-  ? string extends T
-    ? string
-    : T extends `${infer F}-${infer R}`
-    ? CamelifyString<Capitalize<R>, `${C}${F}`>
-    : `${C}${T}`
-  : T;
-
-const camelify = <T extends string = string>(str: T): CamelifyString<T> => {
-  return str.split("-").reduce((newStr, next) => {
-    return (
-      newStr +
-      (newStr === ""
-        ? next
-        : `${next.slice(0, 1).toUpperCase()}${next.slice(1)}`)
-    );
-  }, "") as CamelifyString<T>;
-};
-
 type ConditionRange<T = number> = [boolean, T, T, boolean];
 
 type Condition<T> = T | "{never}" | "{invalid}";
 
 type FullFeatureSet = {
-  anyHover: "none" | "hover";
-  anyPointer: "none" | "coarse" | "fine";
-  colorGamut: "srgb" | "p3" | "rec2020";
+  "any-hover": "none" | "hover";
+  "any-pointer": "none" | "coarse" | "fine";
+  "color-gamut": [
+    belowSrgb: boolean,
+    srgbAndBelowP3: boolean,
+    p3AndBelowRec2020: boolean,
+    rec2020AndAbove: boolean
+  ];
   grid: 0 | 1;
   hover: "none" | "hover";
   orientation: "portrait" | "landscape";
-  overflowBlock: "none" | "scroll" | "paged";
-  overflowInline: "none" | "scroll";
+  "overflow-block": "none" | "scroll" | "paged";
+  "overflow-inline": "none" | "scroll";
   pointer: "none" | "coarse" | "fine";
   scan: "interlace" | "progressive";
   update: "none" | "slow" | "fast";
-  aspectRatio: ConditionRange<[number, number]>;
+  "aspect-ratio": ConditionRange<[number, number]>;
   color: ConditionRange;
-  colorIndex: ConditionRange;
-  deviceAspectRatio: ConditionRange<[number, number]>;
-  deviceHeight: ConditionRange;
-  deviceWidth: ConditionRange;
+  "color-index": ConditionRange;
+  "device-aspect-ratio": ConditionRange<[number, number]>;
+  "device-height": ConditionRange;
+  "device-width": ConditionRange;
   height: ConditionRange;
   monochrome: ConditionRange;
   resolution: ConditionRange;
@@ -61,9 +44,9 @@ type FullFeatureSet = {
 type FullConditionSet = {
   [Property in keyof FullFeatureSet]: Condition<FullFeatureSet[Property]>;
 } & {
-  mediaType: "screen" | "print" | "not-screen" | "not-print" | "all";
+  "media-type": "screen" | "print" | "not-screen" | "not-print" | "all";
   // ---
-  invalidFeatures: string[];
+  "invalid-features": string[];
   // ---
 };
 type ConditionSet = Partial<FullConditionSet>;
@@ -348,6 +331,7 @@ export const andConditionSets = (
   }
   return newConditionSets;
 };
+
 export const mergeConditionSets = (
   setA: ConditionSet,
   setB: ConditionSet
@@ -359,9 +343,9 @@ export const mergeConditionSets = (
       const A = output as FullConditionSet;
       const B = setB as FullConditionSet;
       // in both, merge
-      if (key === "mediaType") {
+      if (key === "media-type") {
         A[key] = B[key];
-      } else if (key === "invalidFeatures") {
+      } else if (key === "invalid-features") {
         A[key].push(...B[key]);
       } else if (output[key] === "{invalid}" || setB[key] === "{invalid}") {
         A[key] = "{invalid}";
@@ -371,11 +355,11 @@ export const mergeConditionSets = (
         const A = output as FullFeatureSet;
         const B = setB as FullFeatureSet;
         if (
-          key === "anyHover" ||
-          key === "anyPointer" ||
+          key === "any-hover" ||
+          key === "any-pointer" ||
           key === "orientation" ||
-          key === "overflowBlock" ||
-          key === "overflowInline" ||
+          key === "overflow-block" ||
+          key === "overflow-inline" ||
           key === "hover" ||
           key === "grid" ||
           key === "scan" ||
@@ -384,10 +368,13 @@ export const mergeConditionSets = (
         ) {
           // this is type safe, but ts can't work it out
           (A as any)[key] = A[key] === B[key] ? A[key] : "{never}";
-        } else if (key === "colorGamut") {
-          const GAMUTS = ["srgb", "p3", "rec2020"] as const;
-          A[key] =
-            GAMUTS[Math.min(GAMUTS.indexOf(A[key]), GAMUTS.indexOf(B[key]))];
+        } else if (key === "color-gamut") {
+          (A as any)[key] = [
+            A[key][0] && B[key][0],
+            A[key][1] && B[key][1],
+            A[key][2] && B[key][2],
+            A[key][3] && B[key][3],
+          ];
         } else {
           const [aMinInclusive, aMin, aMax, aMaxInclusive] = A[key];
           const aMinValue = typeof aMin === "number" ? aMin : aMin[0] / aMin[1];
@@ -429,17 +416,106 @@ export const mergeConditionSets = (
   return output;
 };
 
-export const invertConditionSets = (
+export const notConditionSets = (
   conditionSets: ConditionSets
 ): ConditionSets => {
-  const invertedConditions: ConditionSets = [];
-  for (const conditionSet of conditionSets) {
-    const inverted: ConditionSet = {};
-    for (const k in conditionSet) {
-      //
+  // !(a || b) = !a && !b
+  return conditionSets
+    .map((conditionSet) => invertConditionSet(conditionSet))
+    .reduce((a: ConditionSets, b: ConditionSets) => andConditionSets(a, b));
+};
+
+export const invertConditionSet = (
+  conditionSet: ConditionSet
+): ConditionSets => {
+  let outputSets: ConditionSets = [{}];
+  const {
+    "media-type": mediaType,
+    "invalid-features": invalidFeatures,
+    ...set
+  } = conditionSet;
+  for (const k in set) {
+    const key = k as keyof typeof set;
+    if (set[key] === "{invalid}") {
+      outputSets = outputSets.map((prevSet) => ({
+        ...prevSet,
+        [key]: "{invalid}",
+      }));
+    } else if (set[key] === "{never}") {
+      // do not add key (effectively removing it from result set)
+    } else if (key in DISCRETE_FEATURES) {
+      const dKey = key as keyof typeof DISCRETE_FEATURES;
+      const dSet = set as FullFeatureSet;
+      if (dKey === "color-gamut") {
+        const prevGamutRange = dSet["color-gamut"];
+        outputSets = outputSets.map((set) => ({
+          ...set,
+          "color-gamut": [
+            !prevGamutRange[0],
+            !prevGamutRange[1],
+            !prevGamutRange[2],
+            !prevGamutRange[3],
+          ],
+        }));
+      } else if (dKey === "grid") {
+        const before = dSet[dKey];
+        outputSets = outputSets.map((prevSet) => ({
+          ...prevSet,
+          grid: before === 0 ? 1 : 0,
+        }));
+      } else {
+        const values = Object.keys(DISCRETE_FEATURES[dKey]);
+        const before = dSet[dKey];
+        outputSets = outputSets.flatMap((prevSet) =>
+          values.reduce((sets: ConditionSets, next) => {
+            if (next !== before) {
+              sets.push({
+                ...prevSet,
+                [dKey]: next,
+              });
+            }
+            return sets;
+          }, [])
+        );
+      }
+    } else if (key in RANGE_FEATURES) {
+      const rKey = key as keyof typeof RANGE_FEATURES;
+      const rSet = set as FullFeatureSet;
+      const [minInclusive, min, max, maxInclusive] = rSet[rKey];
+      const isMinBounded = min !== -Infinity && !minInclusive;
+      const isMaxBounded = max !== Infinity && !maxInclusive;
+      if (isMinBounded && isMaxBounded) {
+        outputSets = outputSets.flatMap((set) => [
+          {
+            ...set,
+            [rKey]: [true, -Infinity, min, !minInclusive],
+          },
+          {
+            ...set,
+            [rKey]: [!maxInclusive, max, Infinity, true],
+          },
+        ]);
+      } else if (!isMinBounded && !isMaxBounded) {
+        outputSets = outputSets.map((set) => ({
+          ...set,
+          [rKey]: "{never}",
+        }));
+      } else {
+        if (isMinBounded) {
+          outputSets = outputSets.map((set) => ({
+            ...set,
+            [rKey]: [true, -Infinity, min, !minInclusive],
+          }));
+        } else {
+          outputSets = outputSets.map((set) => ({
+            ...set,
+            [rKey]: [!maxInclusive, max, Infinity, true],
+          }));
+        }
+      }
     }
   }
-  return invertedConditions;
+  return outputSets;
 };
 
 export const mediaFeatureToConditionSets = (
@@ -507,66 +583,69 @@ export const mediaFeatureToConditionSets = (
   }
 
   if (mediaFeature.context === "boolean") {
-    const feature = mediaFeature.feature as
-      | keyof typeof DISCRETE_FEATURES
-      | keyof typeof RANGE_FEATURES;
-    const featureKey = camelify(feature);
-    if (featureKey === "colorGamut") {
+    const feature = mediaFeature.feature as keyof FullFeatureSet;
+    if (feature === "color-gamut") {
       // colorGamut has no 'none' value, but treats srgb as truthy
       return [
         {
-          colorGamut: "srgb",
+          "color-gamut": [false, true, true, true],
         },
       ];
-    } else if (featureKey === "grid") {
+    } else if (feature === "grid") {
       return [
         {
           grid: 1,
         },
       ];
     } else if (
-      featureKey === "anyHover" ||
-      featureKey === "anyPointer" ||
-      featureKey === "hover" ||
-      featureKey === "orientation" ||
-      featureKey === "overflowBlock" ||
-      featureKey === "overflowInline" ||
-      featureKey === "pointer" ||
-      featureKey === "scan" ||
-      featureKey === "update"
+      feature === "any-hover" ||
+      feature === "any-pointer" ||
+      feature === "hover" ||
+      feature === "orientation" ||
+      feature === "overflow-block" ||
+      feature === "overflow-inline" ||
+      feature === "pointer" ||
+      feature === "scan" ||
+      feature === "update"
     ) {
-      return invertConditionSets([
-        {
-          [featureKey]: "none",
-        },
-      ]);
+      return invertConditionSet({
+        [feature]: "none",
+      });
     } else if (
-      featureKey === "aspectRatio" ||
-      featureKey === "deviceAspectRatio" ||
-      featureKey === "resolution"
+      feature === "aspect-ratio" ||
+      feature === "device-aspect-ratio"
     ) {
-      return [{}];
-    } else {
-      /* featureKey === "color" ||
-         featureKey === "colorIndex" ||
-         featureKey === "monochrome" ||
-         featureKey === "deviceHeight" ||
-         featureKey === "deviceWidth" ||
-         featureKey === "height" ||
-         featureKey === "width" */
       return [
         {
-          [featureKey]: [[false, 0, Infinity, true]],
+          [feature]: [true, [-Infinity, 1], [0, 1], false],
+        },
+        {
+          [feature]: [false, [0, 1], [Infinity, 1], true],
+        },
+      ];
+    } else {
+      /* feature === "color" ||
+         feature === "color-index" ||
+         feature === "monochrome" ||
+         feature === "device-height" ||
+         feature === "device-width" ||
+         feature === "height" ||
+         feature === "width" */
+      return [
+        {
+          [feature]: [true, -Infinity, 0, false],
+        },
+        {
+          [feature]: [false, 0, Infinity, true],
         },
       ];
     }
   } else if (mediaFeature.feature in DISCRETE_FEATURES) {
     const feature = mediaFeature.feature as keyof typeof DISCRETE_FEATURES;
-    const featureKey = camelify(feature);
     if (minValue === null || maxValue === null || minValue !== maxValue) {
       return [
         {
-          [featureKey]: "{invalid}",
+          [feature]: "{invalid}",
         },
       ];
     }
@@ -578,11 +657,11 @@ export const mediaFeatureToConditionSets = (
     ) {
       return [
         {
-          [featureKey]: "{invalid}",
+          [feature]: "{invalid}",
         },
       ];
     } else if (unit.type === "number") {
-      if (featureKey !== "grid" || (unit.value !== 0 && unit.value !== 1)) {
+      if (feature !== "grid" || (unit.value !== 0 && unit.value !== 1)) {
         return [{ grid: "{invalid}" }];
       } else {
         return [
@@ -595,7 +674,7 @@ export const mediaFeatureToConditionSets = (
       // unit.type === "ident"
       return [
         {
-          [featureKey]:
+          [feature]:
             unit.value in DISCRETE_FEATURES[feature] ? unit.value : "{invalid}",
         },
       ];
@@ -642,7 +721,7 @@ export const mediaFeatureToConditionSets = (
           {
             resolution: [
               true,
-              0,
+              -Infinity,
               safeMaxValue as Exclude<typeof safeMaxValue, null>,
               maxInclusive,
             ],
@@ -660,20 +739,30 @@ export const mediaFeatureToConditionSets = (
           },
         ];
       } else {
-        return [
-          {
-            resolution: [
-              minInclusive,
-              safeMinValue,
-              safeMaxValue,
-              maxInclusive,
-            ],
-          },
-        ];
+        if (
+          safeMinValue > safeMaxValue ||
+          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+        ) {
+          return [
+            {
+              resolution: "{never}",
+            },
+          ];
+        } else {
+          return [
+            {
+              resolution: [
+                minInclusive,
+                safeMinValue,
+                safeMaxValue,
+                maxInclusive,
+              ],
+            },
+          ];
+        }
       }
     } else if (featureData.type === "ratio") {
       const { feature } = featureData;
-      const featureKey = camelify(feature);
       let safeMinValue: [number, number] | null | false = null;
       let safeMaxValue: [number, number] | null | false = null;
       if (minValue !== null) {
@@ -689,13 +778,13 @@ export const mediaFeatureToConditionSets = (
             : false;
       }
       if (safeMinValue === false || safeMaxValue === false) {
-        return [{ [featureKey]: "{invalid}" }];
+        return [{ [feature]: "{invalid}" }];
       } else if (safeMinValue === null) {
         return [
           {
-            [featureKey]: [
-              false,
-              [0, 1],
+            [feature]: [
+              true,
+              [-Infinity, 1],
               safeMaxValue as Exclude<typeof safeMaxValue, null>,
               maxInclusive,
             ],
@@ -704,29 +793,39 @@ export const mediaFeatureToConditionSets = (
       } else if (safeMaxValue === null) {
         return [
           {
-            [featureKey]: [
+            [feature]: [
               minInclusive,
               safeMinValue as Exclude<typeof safeMinValue, null>,
               [Infinity, 1],
-              false,
+              true,
             ],
           },
         ];
       } else {
-        return [
-          {
-            [featureKey]: [
-              minInclusive,
-              safeMinValue,
-              safeMaxValue,
-              maxInclusive,
-            ],
-          },
-        ];
+        if (
+          safeMinValue > safeMaxValue ||
+          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+        ) {
+          return [
+            {
+              resolution: "{never}",
+            },
+          ];
+        } else {
+          return [
+            {
+              [feature]: [
+                minInclusive,
+                safeMinValue,
+                safeMaxValue,
+                maxInclusive,
+              ],
+            },
+          ];
+        }
       }
     } else if (featureData.type === "integer") {
       const { feature } = featureData;
-      const featureKey = camelify(feature);
       let safeMinValue: number | null | false = null;
       let safeMaxValue: number | null | false = null;
       if (minValue !== null) {
@@ -735,14 +834,19 @@ export const mediaFeatureToConditionSets = (
       if (maxValue !== null) {
         safeMaxValue = maxValue.type === "number" ? maxValue.value : false;
       }
-      if (safeMinValue === false || safeMaxValue === false) {
-        return [{ [featureKey]: "{invalid}" }];
+      if (
+        safeMinValue === false ||
+        safeMaxValue === false ||
+        !Number.isInteger(safeMinValue) ||
+        !Number.isInteger(safeMaxValue)
+      ) {
+        return [{ [feature]: "{invalid}" }];
       } else if (safeMinValue === null) {
         return [
           {
-            [featureKey]: [
+            [feature]: [
               true,
-              0,
+              -Infinity,
               safeMaxValue as Exclude<typeof safeMaxValue, null>,
               maxInclusive,
             ],
@@ -751,7 +855,7 @@ export const mediaFeatureToConditionSets = (
       } else if (safeMaxValue === null) {
         return [
           {
-            [featureKey]: [
+            [feature]: [
               minInclusive,
               safeMinValue as Exclude<typeof safeMinValue, null>,
               Infinity,
@@ -760,21 +864,31 @@ export const mediaFeatureToConditionSets = (
           },
         ];
       } else {
-        return [
-          {
-            [featureKey]: [
-              minInclusive,
-              safeMinValue,
-              safeMaxValue,
-              maxInclusive,
-            ],
-          },
-        ];
+        if (
+          safeMinValue > safeMaxValue ||
+          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+        ) {
+          return [
+            {
+              resolution: "{never}",
+            },
+          ];
+        } else {
+          return [
+            {
+              [feature]: [
+                minInclusive,
+                safeMinValue,
+                safeMaxValue,
+                maxInclusive,
+              ],
+            },
+          ];
+        }
       }
     } else {
       // featureData.type === "length"
       const { feature } = featureData;
-      const featureKey = camelify(feature);
       let safeMinValue: number | null | false = null;
       let safeMaxValue: number | null | false = null;
       if (minValue !== null) {
@@ -798,13 +912,13 @@ export const mediaFeatureToConditionSets = (
         }
       }
       if (safeMinValue === false || safeMaxValue === false) {
-        return [{ [featureKey]: "{invalid}" }];
+        return [{ [feature]: "{invalid}" }];
       } else if (safeMinValue === null) {
         return [
           {
-            [featureKey]: [
+            [feature]: [
               true,
-              0,
+              -Infinity,
               safeMaxValue as Exclude<typeof safeMaxValue, null>,
               maxInclusive,
             ],
@@ -813,7 +927,7 @@ export const mediaFeatureToConditionSets = (
       } else if (safeMaxValue === null) {
         return [
           {
-            [featureKey]: [
+            [feature]: [
               minInclusive,
               safeMinValue as Exclude<typeof safeMinValue, null>,
               Infinity,
@@ -822,16 +936,27 @@ export const mediaFeatureToConditionSets = (
           },
         ];
       } else {
-        return [
-          {
-            [featureKey]: [
-              minInclusive,
-              safeMinValue,
-              safeMaxValue,
-              maxInclusive,
-            ],
-          },
-        ];
+        if (
+          safeMinValue > safeMaxValue ||
+          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+        ) {
+          return [
+            {
+              resolution: "{never}",
+            },
+          ];
+        } else {
+          return [
+            {
+              [feature]: [
+                minInclusive,
+                safeMinValue,
+                safeMaxValue,
+                maxInclusive,
+              ],
+            },
+          ];
+        }
       }
     }
   }
@@ -847,7 +972,7 @@ export const mediaConditionToConditionSets = (
       if (typeof result === "string") {
         conditionSetsSets.push([
           {
-            invalidFeatures: [result],
+            "invalid-features": [result],
           },
         ]);
       } else {
@@ -863,7 +988,7 @@ export const mediaConditionToConditionSets = (
     return conditionSetsSets.reduce((a, b) => andConditionSets(a, b));
   } else {
     // "not"
-    return invertConditionSets(conditionSetsSets[0]);
+    return notConditionSets(conditionSetsSets[0]);
   }
 };
 
@@ -871,7 +996,7 @@ export const astToConditionSets = (ast: AST): ConditionSets => {
   const allConditions: ConditionSet[] = [];
 
   for (const mediaQuery of ast) {
-    let mediaType: FullConditionSet["mediaType"] = "all";
+    let mediaType: FullConditionSet["media-type"] = "all";
     if (mediaQuery.mediaType === "print") {
       mediaType = mediaQuery.mediaPrefix === "not" ? "not-print" : "print";
     } else if (mediaQuery.mediaType === "screen") {
@@ -880,14 +1005,14 @@ export const astToConditionSets = (ast: AST): ConditionSets => {
 
     if (mediaQuery.mediaCondition === null) {
       allConditions.push({
-        mediaType,
+        "media-type": mediaType,
       });
     } else {
       allConditions.push(
         ...mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
           (conditionSet) => ({
             ...conditionSet,
-            mediaType,
+            "media-type": mediaType,
           })
         )
       );
