@@ -482,8 +482,8 @@ export const invertConditionSet = (
       const rKey = key as keyof typeof RANGE_FEATURES;
       const rSet = set as FullFeatureSet;
       const [minInclusive, min, max, maxInclusive] = rSet[rKey];
-      const isMinBounded = min !== -Infinity && !minInclusive;
-      const isMaxBounded = max !== Infinity && !maxInclusive;
+      const isMinBounded = min !== -Infinity || !minInclusive;
+      const isMaxBounded = max !== Infinity || !maxInclusive;
       if (isMinBounded && isMaxBounded) {
         outputSets = outputSets.flatMap((set) => [
           {
@@ -515,6 +515,7 @@ export const invertConditionSet = (
       }
     }
   }
+  // TODO: add mediaType and invalidFeatures
   return outputSets;
 };
 
@@ -1007,6 +1008,16 @@ export const astToConditionSets = (ast: AST): ConditionSets => {
       allConditions.push({
         "media-type": mediaType,
       });
+    } else if (mediaQuery.mediaPrefix === "not") {
+      allConditions.push(
+        ...mediaConditionToConditionSets(mediaQuery.mediaCondition).flatMap(
+          (conditionSet) =>
+            invertConditionSet(conditionSet).map((inverted) => ({
+              ...inverted,
+              "media-type": mediaType,
+            }))
+        )
+      );
     } else {
       allConditions.push(
         ...mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
