@@ -13,5 +13,6 @@
     "**/tsconfig.json": true,
     "**/jest.config.js": true,
     "coverage": true
-  }
+  },
+  "editor.formatOnSave": true
 }
