@@ -1125,8 +1125,12 @@ export const simplifyConditionSets = (
     }
 
     // TODO: find a way to merge overlapping ranges [0,100]X || [50,150]X = [0, 150]X
-    // TODO: find a way to remove ranges that cancel out [0,50]X && [100,150]X = never
+    // TODO: find a way to remove ranges that cancel out [-Inf,50]X || [-50,Inf]X = X
     // TODO: find a way to remove any permutations implied by other ones [0,50]X || [0,100]X = [0,100]X
+
+    /*
+    - 
+    */
   }
   return {
     permutations,

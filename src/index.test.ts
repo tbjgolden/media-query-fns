@@ -124,6 +124,6 @@ test.only("correctly handles weird queries", () => {
     ])
   );
   expect(evaluateQuery("(height < 100px) or (height > 50px)")).toEqual(
-    simplifyConditionSets([])
+    simplifyConditionSets([{}])
   );
 });
