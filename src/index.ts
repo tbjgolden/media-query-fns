@@ -44,10 +44,14 @@ type FullFeatureSet = {
 type FullConditionSet = {
   [Property in keyof FullFeatureSet]: Condition<FullFeatureSet[Property]>;
 } & {
-  "media-type": "screen" | "print" | "not-screen" | "not-print" | "all";
-  // ---
+  "media-type":
+    | "screen"
+    | "print"
+    | "not-screen"
+    | "not-print"
+    | "all"
+    | "{never}";
   "invalid-features": string[];
-  // ---
 };
 type ConditionSet = Partial<FullConditionSet>;
 type ConditionSets = ConditionSet[];
@@ -101,6 +105,45 @@ type StandardUnit =
   | StandardNumberUnit
   | StandardRatioUnit;
 
+type Camelify<T extends PropertyKey, C extends string = ""> = T extends string
+  ? string extends T
+    ? string
+    : T extends `${infer F}_${infer R}`
+    ? Camelify<Capitalize<R>, `${C}${F}`>
+    : `${C}${T}`
+  : T;
+
+type CamelifyObject<T> = { [K in keyof T as Camelify<K>]: T[K] };
+
+type SimplifiedPermutation = Partial<
+  CamelifyObject<
+    FullFeatureSet & {
+      "media-type": Exclude<
+        FullConditionSet["media-type"],
+        "all" | "{never}" | "{invalid}"
+      >;
+    }
+  >
+>;
+
+type EvaluateResult = {
+  permutations: SimplifiedPermutation[];
+  invalidFeatures: string[];
+  neverFeatures: string[];
+};
+
+const camelify = <T extends string>(str: T): Camelify<T> => {
+  return str
+    .split("-")
+    .reduce(
+      (str: string, next: string): string =>
+        str === ""
+          ? next
+          : `${str}${next.slice(0, 1).toUpperCase()}${next.slice(1)}`,
+      ""
+    ) as Camelify<T>;
+};
+
 const DISCRETE_FEATURES = {
   "any-hover": { none: 1, hover: 1 },
   "any-pointer": { none: 1, coarse: 1, fine: 1 },
@@ -118,52 +161,52 @@ const RANGE_FEATURES = {
   "aspect-ratio": {
     feature: "aspect-ratio",
     type: "ratio",
-    // range: [false, 0, Infinity, false],
+    bounds: [false, [0, 1], [Infinity, 1], false],
   },
   "device-aspect-ratio": {
     feature: "device-aspect-ratio",
     type: "ratio",
-    // range: [false, 0, Infinity, false],
+    bounds: [false, [0, 1], [Infinity, 1], false],
   },
   color: {
     feature: "color",
     type: "integer",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   "color-index": {
     feature: "color-index",
     type: "integer",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   monochrome: {
     feature: "monochrome",
     type: "integer",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   "device-height": {
     feature: "device-height",
     type: "length",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   "device-width": {
     feature: "device-width",
     type: "length",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   height: {
     feature: "height",
     type: "length",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   width: {
     feature: "width",
     type: "length",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
   resolution: {
     feature: "resolution",
     type: "resolution",
-    // range: [true, 0, Infinity, false],
+    bounds: [true, 0, Infinity, false],
   },
 } as const;
 
@@ -993,17 +1036,26 @@ export const mediaConditionToConditionSets = (
   }
 };
 
-export const astToConditionSets = (ast: AST): ConditionSets => {
-  const allConditions: ConditionSet[] = [];
+export const simplifyConditionSets = (
+  conditionSets: ConditionSets
+): EvaluateResult => {
+  const permutations: SimplifiedPermutation[] = [];
+  const invalidFeatures = new Set<string>();
+  const neverFeatures = new Set<string>();
 
-  for (const mediaQuery of ast) {
-    let mediaType: FullConditionSet["media-type"] = "all";
-    if (mediaQuery.mediaType === "print") {
-      mediaType = mediaQuery.mediaPrefix === "not" ? "not-print" : "print";
-    } else if (mediaQuery.mediaType === "screen") {
-      mediaType = mediaQuery.mediaPrefix === "not" ? "not-screen" : "screen";
+  for (const conditionSet of conditionSets) {
+    let isUnmatchable = false;
+    if (
+      Array.isArray(conditionSet["invalid-features"]) &&
+      conditionSet["invalid-features"].length > 0
+    ) {
+      for (const invalidFeature of conditionSet["invalid-features"]) {
+        invalidFeatures.add(invalidFeature);
+      }
+      isUnmatchable = true;
     }
 
+<<<<<<< HEAD
     if (mediaQuery.mediaCondition === null) {
       allConditions.push({
         "media-type": mediaType,
@@ -1027,16 +1079,170 @@ export const astToConditionSets = (ast: AST): ConditionSets => {
           })
         )
       );
-    }
-  }
+=======
+    const permutation: SimplifiedPermutation = {};
+    for (const k in conditionSet) {
+      const set = conditionSet as FullConditionSet;
+      const key = k as keyof FullConditionSet;
+      if (key === "invalid-features") {
+        continue;
+      } else {
+        const value = set[key];
+        if (value === "{invalid}") {
+          invalidFeatures.add(key);
+          isUnmatchable = true;
+        } else if (value === "{never}") {
+          neverFeatures.add(key);
+          isUnmatchable = true;
+        } else {
+          if (key !== "media-type" || value !== "all") {
+            if (key in RANGE_FEATURES) {
+              const [minInclusive, min, max, maxInclusive] = set[
+                key as keyof typeof RANGE_FEATURES
+              ] as ConditionRange | ConditionRange<[number, number]>;
+              const minValue = typeof min === "number" ? min : min[0] / min[1];
+              const maxValue = typeof max === "number" ? max : max[0] / max[1];
+              const [lbInclusive, lb, ub, ubInclusive] =
+                RANGE_FEATURES[key as keyof typeof RANGE_FEATURES].bounds;
+              const lbValue = typeof lb === "number" ? lb : lb[0] / lb[1];
+              const ubValue = typeof ub === "number" ? ub : ub[0] / ub[1];
 
-  return allConditions;
+              const isMinLTELowerBound =
+                minValue < lbValue ||
+                (minValue === lbValue && (!lbInclusive || minInclusive));
+              const isMinGTUpperBound =
+                minValue > ubValue ||
+                (minValue === ubValue && (!ubInclusive || !minInclusive));
+
+              const isMaxLTLowerBound =
+                maxValue < lbValue ||
+                (maxValue === lbValue && (!lbInclusive || !maxInclusive));
+              const isMaxGTEUpperBound =
+                maxValue > ubValue ||
+                (maxValue === ubValue && (!ubInclusive || maxInclusive));
+
+              if (isMinGTUpperBound || isMaxLTLowerBound) {
+                neverFeatures.add(key);
+                isUnmatchable = true;
+              } else if (isMinLTELowerBound && isMaxGTEUpperBound) {
+                // {always}
+              } else if (isMinLTELowerBound) {
+                permutation[key] = [lbInclusive, lb, max, maxInclusive] as any;
+              } else if (isMaxGTEUpperBound) {
+                permutation[key] = [minInclusive, min, ub, ubInclusive] as any;
+              } else {
+                permutation[key] = [
+                  minInclusive,
+                  min,
+                  max,
+                  maxInclusive,
+                ] as any;
+              }
+            } else {
+              permutation[key] = value as any;
+            }
+          }
+        }
+      }
+>>>>>>> 0f31bf163884554a91501936703ed5d5ee57398e
+    }
+
+    if (!isUnmatchable) {
+      permutations.push(permutation);
+    }
+
+    // TODO: find a way to merge overlapping ranges [0,100]X || [50,150]X = [0, 150]X
+    // TODO: find a way to remove ranges that cancel out [-Inf,50]X || [-50,Inf]X = X
+    // TODO: find a way to remove any permutations implied by other ones [0,50]X || [0,100]X = [0,100]X
+
+    /*
+    - 
+    */
+  }
+  return {
+    permutations,
+    invalidFeatures: [...invalidFeatures].sort(),
+    neverFeatures: [...neverFeatures].sort(),
+  };
 };
 
-export const queryToConditionSets = (query: string): ConditionSets => {
+export const evaluateAST = (ast: AST): EvaluateResult => {
+  const allConditions: ConditionSets = [];
+
+  for (const mediaQuery of ast) {
+    const extraConditions: ConditionSets = [];
+    if (mediaQuery.mediaPrefix === "not") {
+      if (mediaQuery.mediaType === "all") {
+        // TODO: work out if this should be pushed at all
+        extraConditions.push({
+          "media-type": "{never}",
+        });
+      } else if (mediaQuery.mediaType === "print") {
+        extraConditions.push({
+          "media-type": "not-print",
+        });
+      } else if (mediaQuery.mediaType === "screen") {
+        extraConditions.push({
+          "media-type": "not-screen",
+        });
+      } else {
+        extraConditions.push({
+          "media-type": "all",
+        });
+      }
+
+      if (mediaQuery.mediaCondition !== null) {
+        allConditions.push(
+          ...notConditionSets(
+            mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
+              (conditionSet) => ({
+                ...conditionSet,
+              })
+            )
+          )
+        );
+      }
+    } else {
+      let mediaType: FullConditionSet["media-type"] = mediaQuery.mediaType;
+      if (
+        mediaType !== "all" &&
+        mediaType !== "screen" &&
+        mediaType !== "print"
+      ) {
+        mediaType = "{never}";
+      }
+      if (mediaQuery.mediaCondition === null) {
+        extraConditions.push({
+          "media-type": mediaType,
+        });
+      } else {
+        extraConditions.push(
+          ...mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
+            (conditionSet) => ({
+              ...conditionSet,
+              "media-type": mediaType,
+            })
+          )
+        );
+      }
+    }
+    allConditions.push(...extraConditions);
+  }
+
+  return simplifyConditionSets(allConditions);
+};
+
+export const evaluateQuery = (query: string): EvaluateResult => {
   const ast = toAST(query);
+  console.log(JSON.stringify(ast, null, 2));
+  // TODO: fix bug with toAST
+  // not (min-width: 100px) and (max-width: 200px) should fail
+  // not ((min-width: 100px) and (max-width: 200px)) should not have mediaPrefix
+  // other media types like tty should never match, but not break query
+  // negative numbers should parse correctly
+  //
   if (ast === null) {
     throw new Error("Query string was not lexed due to a syntax error");
   }
-  return astToConditionSets(ast);
+  return evaluateAST(ast);
 };
