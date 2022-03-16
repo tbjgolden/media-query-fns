@@ -110,7 +110,7 @@ test("handles not queries", () => {
   ).toThrow();
 });
 
-test.only("correctly handles weird queries", () => {
+test("correctly handles weird queries", () => {
   expect(evaluateQuery("not (width: infinite)")).toEqual({
     invalidFeatures: ["width"],
     neverFeatures: [],
@@ -129,19 +129,19 @@ test.only("correctly handles weird queries", () => {
 });
 
 test("not operator", () => {
-  expect(queryToConditionSets("not (min-width: 120px)")).toEqual([
+  expect(evaluateQuery("not (min-width: 120px)")).toEqual([
     {
       "media-type": "all",
       width: [true, -Infinity, 120, false],
     },
   ]);
-  expect(queryToConditionSets("not (max-width: 240px)")).toEqual([
+  expect(evaluateQuery("not (max-width: 240px)")).toEqual([
     {
       "media-type": "all",
       width: [false, 240, Infinity, true],
     },
   ]);
-  expect(queryToConditionSets("not (110px <= width <= 220px)")).toEqual([
+  expect(evaluateQuery("not (110px <= width <= 220px)")).toEqual([
     {
       "media-type": "all",
       width: [true, -Infinity, 110, false],
@@ -151,28 +151,26 @@ test("not operator", () => {
       width: [false, 220, Infinity, true],
     },
   ]);
-  expect(queryToConditionSets("screen and (not (min-width: 120px))")).toEqual([
+  expect(evaluateQuery("screen and (not (min-width: 120px))")).toEqual([
     {
       "media-type": "screen",
       width: [true, -Infinity, 120, false],
     },
   ]);
-  expect(queryToConditionSets("print and (not (max-width: 240px))")).toEqual([
+  expect(evaluateQuery("print and (not (max-width: 240px))")).toEqual([
     {
       "media-type": "print",
       width: [false, 240, Infinity, true],
     },
   ]);
-  expect(
-    queryToConditionSets("not print and (110px <= width <= 220px)")
-  ).toEqual([
+  expect(evaluateQuery("not print and (110px <= width <= 220px)")).toEqual([
     {
       "media-type": "not-print",
       width: [true, 110, 220, true],
     },
   ]);
   expect(
-    queryToConditionSets("not print and (not (110px <= width <= 220px))")
+    evaluateQuery("not print and (not (110px <= width <= 220px))")
   ).toEqual([
     {
       "media-type": "not-print",

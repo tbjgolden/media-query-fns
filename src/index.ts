@@ -1055,31 +1055,6 @@ export const simplifyConditionSets = (
       isUnmatchable = true;
     }
 
-<<<<<<< HEAD
-    if (mediaQuery.mediaCondition === null) {
-      allConditions.push({
-        "media-type": mediaType,
-      });
-    } else if (mediaQuery.mediaPrefix === "not") {
-      allConditions.push(
-        ...mediaConditionToConditionSets(mediaQuery.mediaCondition).flatMap(
-          (conditionSet) =>
-            invertConditionSet(conditionSet).map((inverted) => ({
-              ...inverted,
-              "media-type": mediaType,
-            }))
-        )
-      );
-    } else {
-      allConditions.push(
-        ...mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
-          (conditionSet) => ({
-            ...conditionSet,
-            "media-type": mediaType,
-          })
-        )
-      );
-=======
     const permutation: SimplifiedPermutation = {};
     for (const k in conditionSet) {
       const set = conditionSet as FullConditionSet;
@@ -1144,7 +1119,6 @@ export const simplifyConditionSets = (
           }
         }
       }
->>>>>>> 0f31bf163884554a91501936703ed5d5ee57398e
     }
 
     if (!isUnmatchable) {
@@ -1154,10 +1128,6 @@ export const simplifyConditionSets = (
     // TODO: find a way to merge overlapping ranges [0,100]X || [50,150]X = [0, 150]X
     // TODO: find a way to remove ranges that cancel out [-Inf,50]X || [-50,Inf]X = X
     // TODO: find a way to remove any permutations implied by other ones [0,50]X || [0,100]X = [0,100]X
-
-    /*
-    - 
-    */
   }
   return {
     permutations,
@@ -1234,13 +1204,6 @@ export const evaluateAST = (ast: AST): EvaluateResult => {
 
 export const evaluateQuery = (query: string): EvaluateResult => {
   const ast = toAST(query);
-  console.log(JSON.stringify(ast, null, 2));
-  // TODO: fix bug with toAST
-  // not (min-width: 100px) and (max-width: 200px) should fail
-  // not ((min-width: 100px) and (max-width: 200px)) should not have mediaPrefix
-  // other media types like tty should never match, but not break query
-  // negative numbers should parse correctly
-  //
   if (ast === null) {
     throw new Error("Query string was not lexed due to a syntax error");
   }
