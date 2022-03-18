@@ -105,43 +105,19 @@ type StandardUnit =
   | StandardNumberUnit
   | StandardRatioUnit;
 
-type Camelify<T extends PropertyKey, C extends string = ""> = T extends string
-  ? string extends T
-    ? string
-    : T extends `${infer F}_${infer R}`
-    ? Camelify<Capitalize<R>, `${C}${F}`>
-    : `${C}${T}`
-  : T;
-
-type CamelifyObject<T> = { [K in keyof T as Camelify<K>]: T[K] };
-
 type SimplifiedPermutation = Partial<
-  CamelifyObject<
-    FullFeatureSet & {
-      "media-type": Exclude<
-        FullConditionSet["media-type"],
-        "all" | "{never}" | "{invalid}"
-      >;
-    }
-  >
+  FullFeatureSet & {
+    "media-type": Exclude<
+      FullConditionSet["media-type"],
+      "all" | "{never}" | "{invalid}"
+    >;
+  }
 >;
 
 type EvaluateResult = {
   permutations: SimplifiedPermutation[];
   invalidFeatures: string[];
   neverFeatures: string[];
-};
-
-const camelify = <T extends string>(str: T): Camelify<T> => {
-  return str
-    .split("-")
-    .reduce(
-      (str: string, next: string): string =>
-        str === ""
-          ? next
-          : `${str}${next.slice(0, 1).toUpperCase()}${next.slice(1)}`,
-      ""
-    ) as Camelify<T>;
 };
 
 const DISCRETE_FEATURES = {
@@ -468,18 +444,18 @@ export const notConditionSets = (
     .reduce((a: ConditionSets, b: ConditionSets) => andConditionSets(a, b));
 };
 
-export const invertConditionSet = (
-  conditionSet: ConditionSet
-): ConditionSets => {
+export const invertConditionSet = (set: ConditionSet): ConditionSets => {
   let outputSets: ConditionSets = [{}];
-  const {
-    "media-type": mediaType,
-    "invalid-features": invalidFeatures,
-    ...set
-  } = conditionSet;
   for (const k in set) {
     const key = k as keyof typeof set;
-    if (set[key] === "{invalid}") {
+    if (key === "invalid-features") {
+      outputSets = outputSets.map((prevSet) => ({
+        ...prevSet,
+        "invalid-features": set[key],
+      }));
+    } else if (key === "media-type") {
+      //
+    } else if (set[key] === "{invalid}") {
       outputSets = outputSets.map((prevSet) => ({
         ...prevSet,
         [key]: "{invalid}",
@@ -1077,41 +1053,61 @@ export const simplifyConditionSets = (
               ] as ConditionRange | ConditionRange<[number, number]>;
               const minValue = typeof min === "number" ? min : min[0] / min[1];
               const maxValue = typeof max === "number" ? max : max[0] / max[1];
-              const [lbInclusive, lb, ub, ubInclusive] =
-                RANGE_FEATURES[key as keyof typeof RANGE_FEATURES].bounds;
-              const lbValue = typeof lb === "number" ? lb : lb[0] / lb[1];
-              const ubValue = typeof ub === "number" ? ub : ub[0] / ub[1];
 
-              const isMinLTELowerBound =
-                minValue < lbValue ||
-                (minValue === lbValue && (!lbInclusive || minInclusive));
-              const isMinGTUpperBound =
-                minValue > ubValue ||
-                (minValue === ubValue && (!ubInclusive || !minInclusive));
+              const isMinLTEMax =
+                minValue < maxValue ||
+                (minValue === maxValue && (!maxInclusive || minInclusive));
 
-              const isMaxLTLowerBound =
-                maxValue < lbValue ||
-                (maxValue === lbValue && (!lbInclusive || !maxInclusive));
-              const isMaxGTEUpperBound =
-                maxValue > ubValue ||
-                (maxValue === ubValue && (!ubInclusive || maxInclusive));
+              if (isMinLTEMax) {
+                const [lbInclusive, lb, ub, ubInclusive] =
+                  RANGE_FEATURES[key as keyof typeof RANGE_FEATURES].bounds;
+                const lbValue = typeof lb === "number" ? lb : lb[0] / lb[1];
+                const ubValue = typeof ub === "number" ? ub : ub[0] / ub[1];
 
-              if (isMinGTUpperBound || isMaxLTLowerBound) {
+                const isMinLTELowerBound =
+                  minValue < lbValue ||
+                  (minValue === lbValue && (!lbInclusive || minInclusive));
+                const isMinGTUpperBound =
+                  minValue > ubValue ||
+                  (minValue === ubValue && (!ubInclusive || !minInclusive));
+
+                const isMaxLTLowerBound =
+                  maxValue < lbValue ||
+                  (maxValue === lbValue && (!lbInclusive || !maxInclusive));
+                const isMaxGTEUpperBound =
+                  maxValue > ubValue ||
+                  (maxValue === ubValue && (!ubInclusive || maxInclusive));
+
+                if (isMinGTUpperBound || isMaxLTLowerBound) {
+                  neverFeatures.add(key);
+                  isUnmatchable = true;
+                } else if (isMinLTELowerBound && isMaxGTEUpperBound) {
+                  // {always}
+                } else if (isMinLTELowerBound) {
+                  permutation[key] = [
+                    lbInclusive,
+                    lb,
+                    max,
+                    maxInclusive,
+                  ] as any;
+                } else if (isMaxGTEUpperBound) {
+                  permutation[key] = [
+                    minInclusive,
+                    min,
+                    ub,
+                    ubInclusive,
+                  ] as any;
+                } else {
+                  permutation[key] = [
+                    minInclusive,
+                    min,
+                    max,
+                    maxInclusive,
+                  ] as any;
+                }
+              } else {
                 neverFeatures.add(key);
                 isUnmatchable = true;
-              } else if (isMinLTELowerBound && isMaxGTEUpperBound) {
-                // {always}
-              } else if (isMinLTELowerBound) {
-                permutation[key] = [lbInclusive, lb, max, maxInclusive] as any;
-              } else if (isMaxGTEUpperBound) {
-                permutation[key] = [minInclusive, min, ub, ubInclusive] as any;
-              } else {
-                permutation[key] = [
-                  minInclusive,
-                  min,
-                  max,
-                  maxInclusive,
-                ] as any;
               }
             } else {
               permutation[key] = value as any;
@@ -1124,11 +1120,8 @@ export const simplifyConditionSets = (
     if (!isUnmatchable) {
       permutations.push(permutation);
     }
-
-    // TODO: find a way to merge overlapping ranges [0,100]X || [50,150]X = [0, 150]X
-    // TODO: find a way to remove ranges that cancel out [-Inf,50]X || [-50,Inf]X = X
-    // TODO: find a way to remove any permutations implied by other ones [0,50]X || [0,100]X = [0,100]X
   }
+
   return {
     permutations,
     invalidFeatures: [...invalidFeatures].sort(),
@@ -1142,45 +1135,38 @@ export const evaluateAST = (ast: AST): EvaluateResult => {
   for (const mediaQuery of ast) {
     const extraConditions: ConditionSets = [];
     if (mediaQuery.mediaPrefix === "not") {
-      if (mediaQuery.mediaType === "all") {
-        // TODO: work out if this should be pushed at all
-        extraConditions.push({
-          "media-type": "{never}",
-        });
-      } else if (mediaQuery.mediaType === "print") {
+      console.log(JSON.stringify(mediaQuery, null, 2));
+      console.log("A");
+      console.log("<", JSON.stringify(mediaQuery, null, 2));
+      if (mediaQuery.mediaType === "print") {
         extraConditions.push({
           "media-type": "not-print",
         });
+        console.log("B");
       } else if (mediaQuery.mediaType === "screen") {
         extraConditions.push({
           "media-type": "not-screen",
         });
-      } else {
-        extraConditions.push({
-          "media-type": "all",
-        });
       }
 
       if (mediaQuery.mediaCondition !== null) {
-        allConditions.push(
+        extraConditions.push(
           ...notConditionSets(
-            mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
-              (conditionSet) => ({
+            mediaConditionToConditionSets(mediaQuery.mediaCondition)
+          ).map((conditionSet) => {
+            if (mediaQuery.mediaType === "all") {
+              return conditionSet;
+            } else {
+              return {
                 ...conditionSet,
-              })
-            )
-          )
+                "media-type": mediaQuery.mediaType,
+              };
+            }
+          })
         );
       }
     } else {
-      let mediaType: FullConditionSet["media-type"] = mediaQuery.mediaType;
-      if (
-        mediaType !== "all" &&
-        mediaType !== "screen" &&
-        mediaType !== "print"
-      ) {
-        mediaType = "{never}";
-      }
+      const mediaType: FullConditionSet["media-type"] = mediaQuery.mediaType;
       if (mediaQuery.mediaCondition === null) {
         extraConditions.push({
           "media-type": mediaType,
@@ -1203,7 +1189,9 @@ export const evaluateAST = (ast: AST): EvaluateResult => {
 };
 
 export const evaluateQuery = (query: string): EvaluateResult => {
+  console.log(query);
   const ast = toAST(query);
+  console.log(JSON.stringify(ast, null, 2));
   if (ast === null) {
     throw new Error("Query string was not lexed due to a syntax error");
   }
