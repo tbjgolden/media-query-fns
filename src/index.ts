@@ -1135,14 +1135,10 @@ export const evaluateAST = (ast: AST): EvaluateResult => {
   for (const mediaQuery of ast) {
     const extraConditions: ConditionSets = [];
     if (mediaQuery.mediaPrefix === "not") {
-      console.log(JSON.stringify(mediaQuery, null, 2));
-      console.log("A");
-      console.log("<", JSON.stringify(mediaQuery, null, 2));
       if (mediaQuery.mediaType === "print") {
         extraConditions.push({
           "media-type": "not-print",
         });
-        console.log("B");
       } else if (mediaQuery.mediaType === "screen") {
         extraConditions.push({
           "media-type": "not-screen",
@@ -1189,9 +1185,7 @@ export const evaluateAST = (ast: AST): EvaluateResult => {
 };
 
 export const evaluateQuery = (query: string): EvaluateResult => {
-  console.log(query);
   const ast = toAST(query);
-  console.log(JSON.stringify(ast, null, 2));
   if (ast === null) {
     throw new Error("Query string was not lexed due to a syntax error");
   }

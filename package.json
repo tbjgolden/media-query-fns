@@ -18,7 +18,7 @@
     "watch": "jest --watch"
   },
   "dependencies": {
-    "media-query-parser": "^1.0.1"
+    "media-query-parser": "^1.0.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.2.1",

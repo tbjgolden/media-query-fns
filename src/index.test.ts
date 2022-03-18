@@ -150,22 +150,7 @@ test("correctly handles weird queries", () => {
   );
 });
 
-test.only("not operator", () => {
-  expect(evaluateQuery("not print and (110px <= width <= 220px)")).toEqual(
-    simplifyConditionSets([
-      {
-        "media-type": "not-print",
-      },
-      {
-        "media-type": "print",
-        width: [true, 0, 110, false],
-      },
-      {
-        "media-type": "print",
-        width: [false, 220, Infinity, false],
-      },
-    ])
-  );
+test("not operator", () => {
   expect(evaluateQuery("not (width < -1px)")).toEqual(
     simplifyConditionSets([{}])
   );
@@ -213,17 +198,31 @@ test.only("not operator", () => {
       },
     ])
   );
+  expect(evaluateQuery("not print and (110px <= width <= 220px)")).toEqual(
+    simplifyConditionSets([
+      {
+        "media-type": "not-print",
+      },
+      {
+        "media-type": "print",
+        width: [true, 0, 110, false],
+      },
+      {
+        "media-type": "print",
+        width: [false, 220, Infinity, false],
+      },
+    ])
+  );
   expect(
     evaluateQuery("not print and (not (110px <= width <= 220px))")
   ).toEqual(
     simplifyConditionSets([
       {
         "media-type": "not-print",
-        width: [true, -Infinity, 110, false],
       },
       {
-        "media-type": "not-print",
-        width: [false, 220, Infinity, true],
+        "media-type": "print",
+        width: [true, 110, 220, true],
       },
     ])
   );
