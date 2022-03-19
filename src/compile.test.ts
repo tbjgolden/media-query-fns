@@ -1,7 +1,7 @@
-import { evaluateQuery, simplifyConditionSets } from ".";
+import { compileQuery, simplifyConditionSets } from "./compile";
 
 test("evaluateQuery", () => {
-  expect(evaluateQuery("(min-width: 120px)")).toEqual(
+  expect(compileQuery("(min-width: 120px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -9,7 +9,7 @@ test("evaluateQuery", () => {
       },
     ])
   );
-  expect(evaluateQuery("(min-width: 100px) and (max-width: 200px)")).toEqual(
+  expect(compileQuery("(min-width: 100px) and (max-width: 200px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -17,7 +17,7 @@ test("evaluateQuery", () => {
       },
     ])
   );
-  expect(evaluateQuery("(50px < width <= 150px)")).toEqual(
+  expect(compileQuery("(50px < width <= 150px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -28,7 +28,7 @@ test("evaluateQuery", () => {
 });
 
 test("checking hyphenated keys", () => {
-  expect(evaluateQuery("(min-aspect-ratio: 1/2)")).toEqual({
+  expect(compileQuery("(min-aspect-ratio: 1/2)")).toEqual({
     invalidFeatures: [],
     neverFeatures: [],
     permutations: [
@@ -40,7 +40,7 @@ test("checking hyphenated keys", () => {
 });
 
 test("handles not queries", () => {
-  expect(evaluateQuery("not (min-width: 120px)")).toEqual(
+  expect(compileQuery("not (min-width: 120px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -49,7 +49,7 @@ test("handles not queries", () => {
     ])
   );
   expect(
-    evaluateQuery("not ((min-width: 100px) and (max-width: 200px))")
+    compileQuery("not ((min-width: 100px) and (max-width: 200px))")
   ).toEqual(
     simplifyConditionSets([
       {
@@ -63,9 +63,7 @@ test("handles not queries", () => {
     ])
   );
   expect(
-    evaluateQuery(
-      "screen and (not ((min-width: 100px) and (max-width: 200px)))"
-    )
+    compileQuery("screen and (not ((min-width: 100px) and (max-width: 200px)))")
   ).toEqual(
     simplifyConditionSets([
       {
@@ -79,7 +77,7 @@ test("handles not queries", () => {
     ])
   );
   expect(
-    evaluateQuery("not print and (min-width: 100px) and (max-width: 200px)")
+    compileQuery("not print and (min-width: 100px) and (max-width: 200px)")
   ).toEqual(
     simplifyConditionSets([
       {
@@ -96,7 +94,7 @@ test("handles not queries", () => {
     ])
   );
   expect(
-    evaluateQuery(
+    compileQuery(
       "not screen and (not ((min-width: 100px) and (max-width: 200px)))"
     )
   ).toEqual(
@@ -111,7 +109,7 @@ test("handles not queries", () => {
     ])
   );
   expect(
-    evaluateQuery("not ((min-width: 100px) and (max-width: 200px))")
+    compileQuery("not ((min-width: 100px) and (max-width: 200px))")
   ).toEqual({
     invalidFeatures: [],
     neverFeatures: [],
@@ -121,24 +119,24 @@ test("handles not queries", () => {
     ],
   });
   expect(() =>
-    evaluateQuery("not (min-width: 100px) and (max-width: 200px)")
+    compileQuery("not (min-width: 100px) and (max-width: 200px)")
   ).toThrow();
 });
 
 test("correctly handles weird queries", () => {
-  expect(evaluateQuery("not (width: infinite)")).toEqual({
+  expect(compileQuery("not (width: infinite)")).toEqual({
     invalidFeatures: ["width"],
     neverFeatures: [],
     permutations: [],
   });
-  expect(evaluateQuery("(aspect-ratio: 0.01/1)")).toEqual(
+  expect(compileQuery("(aspect-ratio: 0.01/1)")).toEqual(
     simplifyConditionSets([
       {
         "aspect-ratio": [true, [0.01, 1], [0.01, 1], true],
       },
     ])
   );
-  expect(evaluateQuery("(height < 100px) or (height > 50px)")).toEqual(
+  expect(compileQuery("(height < 100px) or (height > 50px)")).toEqual(
     simplifyConditionSets([
       {
         height: [true, 0, 100, false],
@@ -151,10 +149,10 @@ test("correctly handles weird queries", () => {
 });
 
 test("not operator", () => {
-  expect(evaluateQuery("not (width < -1px)")).toEqual(
+  expect(compileQuery("not (width < -1px)")).toEqual(
     simplifyConditionSets([{}])
   );
-  expect(evaluateQuery("not (min-width: 120px)")).toEqual(
+  expect(compileQuery("not (min-width: 120px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -162,7 +160,7 @@ test("not operator", () => {
       },
     ])
   );
-  expect(evaluateQuery("not (max-width: 240px)")).toEqual(
+  expect(compileQuery("not (max-width: 240px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -170,7 +168,7 @@ test("not operator", () => {
       },
     ])
   );
-  expect(evaluateQuery("not (110px <= width <= 220px)")).toEqual(
+  expect(compileQuery("not (110px <= width <= 220px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "all",
@@ -182,7 +180,7 @@ test("not operator", () => {
       },
     ])
   );
-  expect(evaluateQuery("screen and (not (min-width: 120px))")).toEqual(
+  expect(compileQuery("screen and (not (min-width: 120px))")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "screen",
@@ -190,7 +188,7 @@ test("not operator", () => {
       },
     ])
   );
-  expect(evaluateQuery("print and (not (max-width: 240px))")).toEqual(
+  expect(compileQuery("print and (not (max-width: 240px))")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "print",
@@ -198,7 +196,7 @@ test("not operator", () => {
       },
     ])
   );
-  expect(evaluateQuery("not print and (110px <= width <= 220px)")).toEqual(
+  expect(compileQuery("not print and (110px <= width <= 220px)")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "not-print",
@@ -213,9 +211,7 @@ test("not operator", () => {
       },
     ])
   );
-  expect(
-    evaluateQuery("not print and (not (110px <= width <= 220px))")
-  ).toEqual(
+  expect(compileQuery("not print and (not (110px <= width <= 220px))")).toEqual(
     simplifyConditionSets([
       {
         "media-type": "not-print",

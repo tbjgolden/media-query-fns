@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { hello } from "media-query-fns";
+import { hello } from "src/compile";
 
 const [_cmd, _fileName, ...args] = process.argv;
 const arg = args.join(" ");
