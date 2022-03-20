@@ -273,15 +273,6 @@ export const matches = (
         }
       } else if (k === "width") {
         const [minInclusive, min, max, maxInclusive] = p[k];
-        console.log(minInclusive, min, max, maxInclusive, env.widthPx);
-        console.log(
-          !(
-            env.widthPx < min ||
-            env.widthPx > max ||
-            (min === env.widthPx && !minInclusive) ||
-            (max === env.widthPx && !maxInclusive)
-          )
-        );
         if (
           env.widthPx < min ||
           env.widthPx > max ||

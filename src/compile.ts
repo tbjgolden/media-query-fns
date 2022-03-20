@@ -637,9 +637,6 @@ export const mediaFeatureToConditionSets = (
     ) {
       return [
         {
-          [feature]: [true, [-Infinity, 1], [0, 1], false],
-        },
-        {
           [feature]: [false, [0, 1], [Infinity, 1], true],
         },
       ];
@@ -652,9 +649,6 @@ export const mediaFeatureToConditionSets = (
          feature === "height" ||
          feature === "width" */
       return [
-        {
-          [feature]: [true, -Infinity, 0, false],
-        },
         {
           [feature]: [false, 0, Infinity, true],
         },
@@ -692,12 +686,31 @@ export const mediaFeatureToConditionSets = (
       }
     } else {
       // unit.type === "ident"
-      return [
-        {
-          [feature]:
-            unit.value in DISCRETE_FEATURES[feature] ? unit.value : "{invalid}",
-        },
-      ];
+      if (feature === "color-gamut") {
+        const index = ["srgb", "p3", "rec2020"].indexOf(unit.value);
+        if (index === -1) {
+          return [
+            {
+              "color-gamut": "{invalid}",
+            },
+          ];
+        } else {
+          return [
+            {
+              "color-gamut": [false, index <= 0, index <= 1, index <= 2],
+            },
+          ];
+        }
+      } else {
+        return [
+          {
+            [feature]:
+              unit.value in DISCRETE_FEATURES[feature]
+                ? unit.value
+                : "{invalid}",
+          },
+        ];
+      }
     }
   } else {
     // mediaFeature.feature in RANGE_FEATURES
@@ -761,7 +774,7 @@ export const mediaFeatureToConditionSets = (
       } else {
         if (
           safeMinValue > safeMaxValue ||
-          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+          (safeMinValue === safeMaxValue && !(minInclusive && maxInclusive))
         ) {
           return [
             {
@@ -824,7 +837,7 @@ export const mediaFeatureToConditionSets = (
       } else {
         if (
           safeMinValue > safeMaxValue ||
-          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+          (safeMinValue === safeMaxValue && !(minInclusive && maxInclusive))
         ) {
           return [
             {
@@ -886,7 +899,7 @@ export const mediaFeatureToConditionSets = (
       } else {
         if (
           safeMinValue > safeMaxValue ||
-          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+          (safeMinValue === safeMaxValue && !(minInclusive && maxInclusive))
         ) {
           return [
             {
@@ -958,11 +971,11 @@ export const mediaFeatureToConditionSets = (
       } else {
         if (
           safeMinValue > safeMaxValue ||
-          (safeMinValue === safeMaxValue && minInclusive && maxInclusive)
+          (safeMinValue === safeMaxValue && !(minInclusive && maxInclusive))
         ) {
           return [
             {
-              resolution: "{never}",
+              [feature]: "{never}",
             },
           ];
         } else {
