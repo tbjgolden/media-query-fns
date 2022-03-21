@@ -1,36 +1,71 @@
-# Use case
+# `media-query-fns`
 
-**OSS lib development**
+[![npm version](https://img.shields.io/npm/v/media-query-fns.svg?style=flat-square)](https://www.npmjs.com/package/media-query-fns)
+![npm bundle size](https://img.shields.io/bundlephobia/minzip/media-query-fns?style=flat-square)
+[![test coverage](https://img.shields.io/badge/dynamic/json?style=flat-square&color=brightgreen&label=coverage&query=%24.total.branches.pct&url=https%3A%2F%2Fraw.githubusercontent.com%2Ftbjgolden%2Fmedia-query-fns%2Fmain%2Fcoverage%2Fcoverage-summary.json)](https://www.npmjs.com/package/media-query-fns)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/tbjgolden/media-query-fns/Release?style=flat-square)](https://github.com/tbjgolden/media-query-fns/actions?query=workflow%3ARelease)
 
-- npm package
-  - supports node-browser shared env out of box
-- cli
-  - boilerplate to wire a cli to a lib
-- web
-  - this is for use during development
-  - supports live reload
+Functions to read media queries from a string/ast and:
 
-This is not a [node app starter](https://github.com/mrwade/ultimate-node-stack), a [web app starter](https://github.com/withastro/astro), or a [hybrid starter](https://github.com/vercel/next.js/).
+- [x] Check if a media query is true for a custom environment
+  - [x] Backed up by [hundreds of unit tests](https://github.com/tbjgolden/media-query-fns/blob/main/src/matches.test.ts)
+- [ ] Converts a media query to a human friendly description
 
-# Init
+Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) which means:
 
-```sh
-# The usual
-git clone https://github.com/tbjgolden/just-build.git <dir>
-cd <dir>
-npm install
-# One time init function to convert template to new project
-node _scripts/init.js
+- [x] **parses any correct CSS media queries**
+- [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-4/
+- [x] **TypeScript friendly**
+- [x] **All valid queries parsed and interpreted, even newer syntax like
+      `@media (100px < width < 200px)`** or complex ones like `@media not screen and ((not (update: none)) and (monochrome))`
+
+## Quickfire examples
+
+```ts
+import { compileQuery, matches } from "media-query-fns";
+const compiledQuery = compileQuery(`@media (max-width: 1200px)`);
+const sharedEnv = {
+  heightPx: 800,
+  dppx: 2,
+  deviceWidthPx: 1280,
+  deviceHeightPx: 800,
+};
+console.log(
+  matches(compiledQuery, {
+    ...sharedEnv,
+    widthPx: 1280,
+  })
+); // false
+console.log(
+  matches(compiledQuery, {
+    ...sharedEnv,
+    widthPx: 900,
+  })
+); // true
 ```
 
-# Key data
+## Considerations & Caveats
 
-Dev environment requires:
+This library:
 
-- node 10+
-- npm >= 5.2.0
+- converts units to a base unit (px for lengths, dppx for resolution, hz for frequency)
+  - there's currently no way to pass in how special units like rem and vw should be converted to px
+- doesn't support calc - [following the spec](https://www.w3.org/TR/mediaqueries-4/#ref-for-media-feature%E2%91%A0%E2%93%AA)
+  - many browsers do support calc, but they probably shouldn't - not just because of the spec but because it opens up a Pandora's box of nasty edge cases
 
-Output code is ES6 and targets:
+Finally, this behavior is currently not supported in matches:
 
-- node 10+
-- All major non-dead browsers (>93%)
+> If a media feature references a concept which does not exist on the device where the UA is running (for example, speech UAs do not have a concept of “width”), the media feature must always evaluate to false.
+
+## Installation
+
+```sh
+npm install media-query-fns --save
+# yarn add media-query-fns
+```
+
+<!-- ## [`API`](docs/api) -->
+
+## License
+
+MIT

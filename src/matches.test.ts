@@ -428,4 +428,7 @@ test("matches others", () => {
   expect(check("@media (device-height: 800px)")).toBe(true);
   expect(check("@media (max-device-height: 1000px)")).toBe(true);
   expect(check("@media (min-device-height: 1000px)")).toBe(false);
+  expect(() =>
+    check("@media not screen and ((not (update: none)) and (monochrome))")
+  ).not.toThrow();
 });

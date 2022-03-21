@@ -7,7 +7,7 @@ const { paths } = require("node-dir");
 
 const projectRoot = path.join(__dirname, "..");
 
-const SHOULD_BUILD_CLI = true; // <- ignores target flags
+const SHOULD_BUILD_CLI = false;
 const SHOULD_BUILD_LIB = true;
 
 const tsConfig = JSON5.parse(
