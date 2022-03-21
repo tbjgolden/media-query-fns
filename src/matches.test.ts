@@ -191,13 +191,13 @@ test("matches color-gamut", () => {
     });
   };
 
-  const gamutSrgb = { colorGamut: "srgbButNotP3" } as const;
+  const gamutSrgb = { colorGamut: "srgb-but-not-p3" } as const;
   expect(check("@media (color-gamut)", gamutSrgb)).toBe(true);
   expect(check("@media not (color-gamut)", gamutSrgb)).toBe(false);
   expect(check("@media (color-gamut: srgb)", gamutSrgb)).toBe(true);
   expect(check("@media (color-gamut: p3)", gamutSrgb)).toBe(false);
   expect(check("@media (color-gamut: rec2020)", gamutSrgb)).toBe(false);
-  const gamutP3 = { colorGamut: "p3ButNotRec2020" } as const;
+  const gamutP3 = { colorGamut: "p3-but-not-rec2020" } as const;
   expect(check("@media (color-gamut)", gamutP3)).toBe(true);
   expect(check("@media not (color-gamut)", gamutP3)).toBe(false);
   expect(check("@media (color-gamut: srgb)", gamutP3)).toBe(true);
@@ -209,7 +209,7 @@ test("matches color-gamut", () => {
   expect(check("@media (color-gamut: srgb)", gamutRec2020)).toBe(true);
   expect(check("@media (color-gamut: p3)", gamutRec2020)).toBe(true);
   expect(check("@media (color-gamut: rec2020)", gamutRec2020)).toBe(true);
-  const gamutNotSrgb = { colorGamut: "notSrgb" } as const;
+  const gamutNotSrgb = { colorGamut: "not-srgb" } as const;
   expect(check("@media (color-gamut)", gamutNotSrgb)).toBe(false);
   expect(check("@media not (color-gamut)", gamutNotSrgb)).toBe(true);
   expect(check("@media (color-gamut: srgb)", gamutNotSrgb)).toBe(false);

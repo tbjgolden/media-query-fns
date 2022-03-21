@@ -223,3 +223,17 @@ test("not operator", () => {
     ])
   );
 });
+
+test("custom units", () => {
+  expect(
+    compileQuery("(width: 1em)", {
+      emPx: 1280,
+    })
+  ).toEqual(
+    simplifyConditionSets([
+      {
+        width: [true, 1280, 1280, true],
+      },
+    ])
+  );
+});

@@ -105,6 +105,51 @@ export type StandardUnit =
   | StandardNumberUnit
   | StandardRatioUnit;
 
+export type UnitConversions = {
+  // = 100vw
+  widthPx: number;
+  // = 100vh
+  heightPx: number;
+  // used to determine vi and vb
+  writingMode:
+    | "horizontal-tb"
+    | "vertical-rl"
+    | "vertical-lr"
+    | "sideways-rl"
+    | "sideways-lr";
+  // also used for rem
+  emPx: number;
+  // also used for rlh
+  lhPx: number;
+  // font-specific sizes
+  exPx: number;
+  chPx: number;
+  capPx: number;
+  icPx: number;
+};
+export type CompiledUnitConversions = {
+  vw: number;
+  vh: number;
+  vmin: number;
+  vmax: number;
+  vi: number;
+  vb: number;
+  em: number;
+  rem: number;
+  lh: number;
+  rlh: number;
+  ex: number;
+  ch: number;
+  cap: number;
+  ic: number;
+  cm: number;
+  mm: number;
+  in: number;
+  q: number;
+  pc: number;
+  pt: number;
+};
+
 export type SimplifiedPermutation = Partial<
   FullFeatureSet & {
     "media-type": Exclude<
@@ -186,8 +231,27 @@ const RANGE_FEATURES = {
   },
 } as const;
 
+const DEFAULT_UNIT_CONVERSIONS: UnitConversions = {
+  // = 100vw
+  widthPx: 1920,
+  // = 100vh
+  heightPx: 1080,
+  // used to determine vi and vb
+  writingMode: "horizontal-tb",
+  // also used for rem
+  emPx: 16,
+  // also used for rlh
+  lhPx: 16,
+  // font-specific sizes
+  exPx: 8,
+  chPx: 8,
+  capPx: 11,
+  icPx: 16,
+};
+
 export const convertToStandardUnit = (
-  token: NumberToken | DimensionToken | RatioToken | IdentToken
+  token: NumberToken | DimensionToken | RatioToken | IdentToken,
+  unitConversions: CompiledUnitConversions
 ): StandardUnit => {
   if (token.type === "<number-token>") {
     return {
@@ -195,18 +259,6 @@ export const convertToStandardUnit = (
       value: token.value,
     };
   } else if (token.type === "<dimension-token>") {
-    /*  <length>: px
-          (font relative, default 16px)
-            <ch>,<ex>: 8px
-            <em>,<rem>,<ic>,<lh>,<rlh>: 16px
-            <cap>: 11px
-          (viewport relative, default 1920×1080)
-            <vh>,<vmin>,<vb>: 10.8px
-            <vw>,<vmax>,<vi>: 19.2px
-        <time>: ms
-        <frequency>: Hz
-        <resolution>: dppx */
-
     let unitType: "length" | "time" | "frequency" | "resolution";
     switch (token.unit) {
       case "s":
@@ -258,62 +310,20 @@ export const convertToStandardUnit = (
         dppx,
       };
     } else {
-      let factor: number;
-      switch (token.unit) {
-        case "ch":
-        case "ex":
-          factor = 8;
-          break;
-        case "em":
-        case "rem":
-        case "ic":
-        case "lh":
-        case "rlh":
-          factor = 16;
-          break;
-        case "cm":
-          factor = 37.79527559;
-          break;
-        case "mm":
-          factor = 0.03779527559;
-          break;
-        case "in":
-          factor = 96;
-          break;
-        case "q":
-          factor = 0.009448818898;
-          break;
-        case "pc":
-          factor = 16;
-          break;
-        case "pt":
-          factor = 16;
-          break;
-        case "cap":
-          factor = 1.333333333;
-          break;
-        case "vh":
-        case "vmin":
-        case "vb":
-          factor = 10.8;
-          break;
-        case "vw":
-        case "vmax":
-        case "vi":
-          factor = 19.2;
-          break;
-        default:
-          return {
-            type: "ident",
-            value: "{invalid}",
-          };
+      if (token.unit in unitConversions) {
+        const factor =
+          unitConversions[token.unit as keyof CompiledUnitConversions];
+        return {
+          type: "dimension",
+          subtype: "length",
+          px: parseFloat((token.value * factor).toFixed(3)),
+        };
+      } else {
+        return {
+          type: "ident",
+          value: "{invalid}",
+        };
       }
-
-      return {
-        type: "dimension",
-        subtype: "length",
-        px: parseFloat((token.value * factor).toFixed(3)),
-      };
     }
   } else if (token.type === "<ident-token>") {
     if (token.value === "infinite") {
@@ -539,7 +549,8 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
 };
 
 export const mediaFeatureToConditionSets = (
-  mediaFeature: MediaFeature
+  mediaFeature: MediaFeature,
+  unitConversions: CompiledUnitConversions
 ): ConditionSets | string => {
   let minValue: StandardUnit | null = null;
   let minInclusive = true;
@@ -549,7 +560,7 @@ export const mediaFeatureToConditionSets = (
   if (mediaFeature.context === "range") {
     if (mediaFeature.range.leftToken !== null) {
       const { leftToken, leftOp } = mediaFeature.range;
-      const value = convertToStandardUnit(leftToken);
+      const value = convertToStandardUnit(leftToken, unitConversions);
       if (leftOp === "<" || leftOp === "<=") {
         minValue = value;
         minInclusive = leftOp === "<=";
@@ -565,7 +576,7 @@ export const mediaFeatureToConditionSets = (
     }
     if (mediaFeature.range.rightToken !== null) {
       const { rightToken, rightOp } = mediaFeature.range;
-      const value = convertToStandardUnit(rightToken);
+      const value = convertToStandardUnit(rightToken, unitConversions);
       if (rightOp === "<" || rightOp === "<=") {
         maxValue = value;
         maxInclusive = rightOp === "<=";
@@ -580,7 +591,7 @@ export const mediaFeatureToConditionSets = (
       }
     }
   } else if (mediaFeature.context === "value") {
-    const value = convertToStandardUnit(mediaFeature.value);
+    const value = convertToStandardUnit(mediaFeature.value, unitConversions);
     if (mediaFeature.prefix === "min") {
       minValue = value;
       minInclusive = true;
@@ -1004,12 +1015,13 @@ export const mediaFeatureToConditionSets = (
 };
 
 export const mediaConditionToConditionSets = (
-  mediaCondition: MediaCondition
+  mediaCondition: MediaCondition,
+  unitConversions: CompiledUnitConversions
 ): ConditionSets => {
   const conditionSetsSets: ConditionSet[][] = [];
   for (const child of mediaCondition.children) {
     if ("context" in child) {
-      const result = mediaFeatureToConditionSets(child);
+      const result = mediaFeatureToConditionSets(child, unitConversions);
       if (typeof result === "string") {
         conditionSetsSets.push([
           {
@@ -1020,7 +1032,9 @@ export const mediaConditionToConditionSets = (
         conditionSetsSets.push(result);
       }
     } else {
-      conditionSetsSets.push(mediaConditionToConditionSets(child));
+      conditionSetsSets.push(
+        mediaConditionToConditionSets(child, unitConversions)
+      );
     }
   }
   if (mediaCondition.operator === "or" || mediaCondition.operator === null) {
@@ -1150,7 +1164,74 @@ export const simplifyConditionSets = (
   };
 };
 
-export const compileAST = (ast: AST): EvaluateResult => {
+const generateUnitConversions = (
+  units: Partial<UnitConversions>
+): CompiledUnitConversions => {
+  // increasing emPx should also increase other units,
+  // but any units passed in override these defaults
+  let impliedUnits: Partial<
+    Pick<UnitConversions, "exPx" | "chPx" | "capPx" | "icPx">
+  > = {};
+  if (typeof units.emPx === "number") {
+    impliedUnits = {
+      exPx: Math.round(units.emPx * 0.5),
+      chPx: Math.round(units.emPx * 0.5),
+      capPx: Math.round(units.emPx * 0.7),
+      icPx: Math.round(units.emPx),
+    };
+  }
+  const mergedUnits = {
+    ...DEFAULT_UNIT_CONVERSIONS,
+    ...impliedUnits,
+    ...units,
+  };
+  const {
+    widthPx,
+    heightPx,
+    writingMode,
+    emPx: em,
+    lhPx: lh,
+    exPx: ex,
+    chPx: ch,
+    capPx: cap,
+    icPx: ic,
+  } = mergedUnits;
+  const vw = widthPx / 100;
+  const vh = heightPx / 100;
+  const vmin = Math.min(vh, vw);
+  const vmax = Math.max(vh, vw);
+  const vi = writingMode === "horizontal-tb" ? vw : vh;
+  const vb = writingMode === "horizontal-tb" ? vh : vw;
+  return {
+    em,
+    rem: em,
+    lh,
+    rlh: lh,
+    ex,
+    ch,
+    cap,
+    ic,
+    vw,
+    vh,
+    vmin,
+    vmax,
+    vi,
+    vb,
+    cm: 37.79527559,
+    mm: 0.03779527559,
+    in: 96,
+    q: 0.009448818898,
+    pc: 16,
+    pt: 16,
+  };
+};
+
+export const compileAST = (
+  ast: AST,
+  units: Partial<UnitConversions> = {}
+): EvaluateResult => {
+  const unitConversions = generateUnitConversions(units);
+
   const allConditions: ConditionSets = [];
 
   for (const mediaQuery of ast) {
@@ -1169,7 +1250,10 @@ export const compileAST = (ast: AST): EvaluateResult => {
       if (mediaQuery.mediaCondition !== null) {
         extraConditions.push(
           ...notConditionSets(
-            mediaConditionToConditionSets(mediaQuery.mediaCondition)
+            mediaConditionToConditionSets(
+              mediaQuery.mediaCondition,
+              unitConversions
+            )
           ).map((conditionSet) => {
             if (mediaQuery.mediaType === "all") {
               return conditionSet;
@@ -1190,12 +1274,13 @@ export const compileAST = (ast: AST): EvaluateResult => {
         });
       } else {
         extraConditions.push(
-          ...mediaConditionToConditionSets(mediaQuery.mediaCondition).map(
-            (conditionSet) => ({
-              ...conditionSet,
-              "media-type": mediaType,
-            })
-          )
+          ...mediaConditionToConditionSets(
+            mediaQuery.mediaCondition,
+            unitConversions
+          ).map((conditionSet) => ({
+            ...conditionSet,
+            "media-type": mediaType,
+          }))
         );
       }
     }
@@ -1212,10 +1297,13 @@ export const compileAST = (ast: AST): EvaluateResult => {
   return simplifyConditionSets(allConditions);
 };
 
-export const compileQuery = (query: string): EvaluateResult => {
+export const compileQuery = (
+  query: string,
+  units: Partial<UnitConversions> = {}
+): EvaluateResult => {
   const ast = toAST(query);
   if (ast === null) {
     throw new Error("Query string was not lexed due to a syntax error");
   }
-  return compileAST(ast);
+  return compileAST(ast, units);
 };

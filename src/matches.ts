@@ -6,7 +6,7 @@ export type Environment = {
   mediaType: "screen" | "print" | "not-screen-or-print";
   anyHover: "none" | "hover";
   anyPointer: "none" | "coarse" | "fine";
-  colorGamut: "notSrgb" | "srgbButNotP3" | "p3ButNotRec2020" | "rec2020";
+  colorGamut: "not-srgb" | "srgb-but-not-p3" | "p3-but-not-rec2020" | "rec2020";
   grid: "bitmap" | "grid";
   hover: "none" | "hover";
   overflowBlock: "none" | "scroll" | "paged";
@@ -44,7 +44,7 @@ export const DESKTOP_ENVIRONMENT: Pick<Environment, DefaultableFeatures> = {
   mediaType: "screen",
   anyHover: "hover",
   anyPointer: "fine",
-  colorGamut: "srgbButNotP3",
+  colorGamut: "srgb-but-not-p3",
   grid: "bitmap",
   hover: "hover",
   overflowBlock: "scroll",
@@ -80,9 +80,9 @@ export const validateEnv = (env: Environment) => {
     throw badInput("anyPointer");
   }
   if (
-    env.colorGamut !== "notSrgb" &&
-    env.colorGamut !== "srgbButNotP3" &&
-    env.colorGamut !== "p3ButNotRec2020" &&
+    env.colorGamut !== "not-srgb" &&
+    env.colorGamut !== "srgb-but-not-p3" &&
+    env.colorGamut !== "p3-but-not-rec2020" &&
     env.colorGamut !== "rec2020"
   ) {
     throw badInput("colorGamut");
@@ -230,9 +230,9 @@ export const matches = (
         const [belowSrgb, srgbAndBelowP3, p3AndBelowRec2020, rec2020AndAbove] =
           p[k];
         if (
-          (env.colorGamut === "notSrgb" && !belowSrgb) ||
-          (env.colorGamut === "srgbButNotP3" && !srgbAndBelowP3) ||
-          (env.colorGamut === "p3ButNotRec2020" && !p3AndBelowRec2020) ||
+          (env.colorGamut === "not-srgb" && !belowSrgb) ||
+          (env.colorGamut === "srgb-but-not-p3" && !srgbAndBelowP3) ||
+          (env.colorGamut === "p3-but-not-rec2020" && !p3AndBelowRec2020) ||
           (env.colorGamut === "rec2020" && !rec2020AndAbove)
         ) {
           matches = false;

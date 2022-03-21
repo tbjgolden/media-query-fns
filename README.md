@@ -17,31 +17,24 @@ Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) w
 - [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-4/
 - [x] **TypeScript friendly**
 - [x] **All valid queries parsed and interpreted, even newer syntax like
-      `@media (100px < width < 200px)`** or complex ones like `@media not screen and ((not (update: none)) and (monochrome))`
+      `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (monochrome))`**
 
 ## Quickfire examples
 
 ```ts
 import { compileQuery, matches } from "media-query-fns";
-const compiledQuery = compileQuery(`@media (max-width: 1200px)`);
-const sharedEnv = {
+const query = compileQuery(`@media (max-width: 1200px)`);
+const env = (widthPx: number) => ({
+  widthPx,
   heightPx: 800,
   dppx: 2,
   deviceWidthPx: 1280,
   deviceHeightPx: 800,
-};
-console.log(
-  matches(compiledQuery, {
-    ...sharedEnv,
-    widthPx: 1280,
-  })
-); // false
-console.log(
-  matches(compiledQuery, {
-    ...sharedEnv,
-    widthPx: 900,
-  })
-); // true
+});
+console.log(matches(query, env(1280) }));
+// false
+console.log(matches(query, env(900) }));
+// true
 ```
 
 ## Considerations & Caveats
