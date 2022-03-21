@@ -301,11 +301,70 @@ test("matches aspect-ratio", () => {
   expect(check("@media (16/10 < aspect-ratio < 16/10)")).toBe(false);
   expect(check("@media (aspect-ratio < 1/100000)")).toBe(false);
   expect(check("@media (aspect-ratio > 1/100000)")).toBe(true);
+  expect(check("@media (aspect-ratio > 1)")).toBe(true);
+  expect(check("@media (aspect-ratio > 0.5)")).toBe(true);
 });
 
-// "aspect-ratio": ConditionRange<[number, number]>;
-// "color-index": ConditionRange;
-// monochrome: ConditionRange;
+test("matches color-index", () => {
+  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
+    const compiled = compileQuery(query);
+    // console.log(
+    //   util.inspect(compiled, {
+    //     depth: 10,
+    //     colors: true,
+    //   })
+    // );
+    return matches(compiled, {
+      ...DEFAULT_DIMENSIONS,
+      ...diffs,
+    });
+  };
+
+  expect(check("@media (color-index > 128)")).toBe(false);
+  expect(check("@media (color-index: 128)")).toBe(false);
+  expect(check("@media (color-index < 129)")).toBe(true);
+  expect(check("@media (color-index)")).toBe(false);
+  const colors128 = { colorIndex: 128 } as const;
+  expect(check("@media (color-index > 128)", colors128)).toBe(false);
+  expect(check("@media (color-index: 128)", colors128)).toBe(true);
+  expect(check("@media (color-index <= 128)", colors128)).toBe(true);
+  expect(check("@media (color-index)", colors128)).toBe(true);
+});
+
+test("matches monochrome", () => {
+  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
+    const compiled = compileQuery(query);
+    // console.log(
+    //   util.inspect(compiled, {
+    //     depth: 10,
+    //     colors: true,
+    //   })
+    // );
+    return matches(compiled, {
+      ...DEFAULT_DIMENSIONS,
+      ...diffs,
+    });
+  };
+
+  expect(check("@media (monochrome > 2)")).toBe(false);
+  expect(check("@media (monochrome: 2)")).toBe(false);
+  expect(check("@media (monochrome < 2)")).toBe(true);
+  expect(check("@media (monochrome)")).toBe(false);
+  const monochrome2 = { monochromeBits: 2 } as const;
+  expect(check("@media (monochrome > 2)", monochrome2)).toBe(false);
+  expect(check("@media (monochrome: 2)", monochrome2)).toBe(true);
+  expect(check("@media (monochrome <= 2)", monochrome2)).toBe(true);
+  expect(check("@media (monochrome)", monochrome2)).toBe(true);
+  const monochrome8 = { monochromeBits: 8 } as const;
+  expect(check("@media (monochrome > 2)", monochrome8)).toBe(true);
+  expect(check("@media (monochrome: 2)", monochrome8)).toBe(false);
+  expect(check("@media (monochrome <= 2)", monochrome8)).toBe(false);
+  expect(check("@media (monochrome)", monochrome8)).toBe(true);
+  const blackAndWhite = { monochromeBits: 1 } as const;
+  expect(check("@media (monochrome: 1)", blackAndWhite)).toBe(true);
+  expect(check("@media (monochrome > 1)", blackAndWhite)).toBe(false);
+  expect(check("@media (monochrome)", blackAndWhite)).toBe(true);
+});
 
 // "any-hover": "none" | "hover";
 // "any-pointer": "none" | "coarse" | "fine";

@@ -20,7 +20,7 @@ export type Environment = {
   deviceHeightPx: Integer;
   colorBits: Integer;
   monochromeBits: "not-monochrome" | Integer;
-  colorTable: "none" | Integer;
+  colorIndex: "none" | Integer;
   dppx: Integer;
 };
 
@@ -36,7 +36,7 @@ type DefaultableFeatures =
   | "pointer"
   | "scan"
   | "update"
-  | "colorTable"
+  | "colorIndex"
   | "colorBits"
   | "monochromeBits";
 
@@ -52,7 +52,7 @@ export const DESKTOP_ENVIRONMENT: Pick<Environment, DefaultableFeatures> = {
   pointer: "fine",
   scan: "progressive",
   update: "fast",
-  colorTable: "none",
+  colorIndex: "none",
   colorBits: 8,
   monochromeBits: "not-monochrome",
 };
@@ -141,10 +141,10 @@ export const validateEnv = (env: Environment) => {
     throw badInput("monochromeBits");
   }
   if (
-    env.colorTable !== "none" &&
-    !(Number.isInteger(env.colorTable) && env.colorTable >= 0)
+    env.colorIndex !== "none" &&
+    !(Number.isInteger(env.colorIndex) && env.colorIndex >= 0)
   ) {
-    throw badInput("colorTable");
+    throw badInput("colorIndex");
   }
 };
 
@@ -360,7 +360,7 @@ export const matches = (
         }
       } else if (k === "color-index") {
         const [minInclusive, min, max, maxInclusive] = p[k];
-        if (env.colorTable === "none") {
+        if (env.colorIndex === "none") {
           if (
             min > 0 ||
             (min === 0 && !minInclusive) ||
@@ -369,12 +369,11 @@ export const matches = (
             matches = false;
             break;
           }
-        }
-        if (
-          env.colorTable < min ||
-          env.colorTable > max ||
-          (min === env.colorTable && !minInclusive) ||
-          (max === env.colorTable && !maxInclusive)
+        } else if (
+          env.colorIndex < min ||
+          env.colorIndex > max ||
+          (min === env.colorIndex && !minInclusive) ||
+          (max === env.colorIndex && !maxInclusive)
         ) {
           matches = false;
           break;

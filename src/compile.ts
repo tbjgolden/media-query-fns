@@ -799,16 +799,22 @@ export const mediaFeatureToConditionSets = (
       let safeMinValue: [number, number] | null | false = null;
       let safeMaxValue: [number, number] | null | false = null;
       if (minValue !== null) {
-        safeMinValue =
-          minValue.type === "ratio"
-            ? [minValue.numerator, minValue.denominator]
-            : false;
+        if (minValue.type === "ratio") {
+          safeMinValue = [minValue.numerator, minValue.denominator];
+        } else if (minValue.type === "number" && minValue.value > 0) {
+          safeMinValue = [minValue.value, 1];
+        } else {
+          safeMinValue = false;
+        }
       }
       if (maxValue !== null) {
-        safeMaxValue =
-          maxValue.type === "ratio"
-            ? [maxValue.numerator, maxValue.denominator]
-            : false;
+        if (maxValue.type === "ratio") {
+          safeMaxValue = [maxValue.numerator, maxValue.denominator];
+        } else if (maxValue.type === "number" && maxValue.value > 0) {
+          safeMaxValue = [maxValue.value, 1];
+        } else {
+          safeMaxValue = false;
+        }
       }
       if (safeMinValue === false || safeMaxValue === false) {
         return [{ [feature]: "{invalid}" }];
@@ -870,53 +876,55 @@ export const mediaFeatureToConditionSets = (
       if (
         safeMinValue === false ||
         safeMaxValue === false ||
-        !Number.isInteger(safeMinValue) ||
-        !Number.isInteger(safeMaxValue)
+        !Number.isInteger(safeMinValue ?? 0) ||
+        !Number.isInteger(safeMaxValue ?? 0)
       ) {
         return [{ [feature]: "{invalid}" }];
-      } else if (safeMinValue === null) {
-        return [
-          {
-            [feature]: [
-              true,
-              -Infinity,
-              safeMaxValue as Exclude<typeof safeMaxValue, null>,
-              maxInclusive,
-            ],
-          },
-        ];
-      } else if (safeMaxValue === null) {
-        return [
-          {
-            [feature]: [
-              minInclusive,
-              safeMinValue as Exclude<typeof safeMinValue, null>,
-              Infinity,
-              true,
-            ],
-          },
-        ];
       } else {
-        if (
-          safeMinValue > safeMaxValue ||
-          (safeMinValue === safeMaxValue && !(minInclusive && maxInclusive))
-        ) {
-          return [
-            {
-              resolution: "{never}",
-            },
-          ];
-        } else {
+        if (safeMinValue === null) {
           return [
             {
               [feature]: [
-                minInclusive,
-                safeMinValue,
-                safeMaxValue,
+                true,
+                -Infinity,
+                safeMaxValue as Exclude<typeof safeMaxValue, null>,
                 maxInclusive,
               ],
             },
           ];
+        } else if (safeMaxValue === null) {
+          return [
+            {
+              [feature]: [
+                minInclusive,
+                safeMinValue as Exclude<typeof safeMinValue, null>,
+                Infinity,
+                true,
+              ],
+            },
+          ];
+        } else {
+          if (
+            safeMinValue > safeMaxValue ||
+            (safeMinValue === safeMaxValue && !(minInclusive && maxInclusive))
+          ) {
+            return [
+              {
+                resolution: "{never}",
+              },
+            ];
+          } else {
+            return [
+              {
+                [feature]: [
+                  minInclusive,
+                  safeMinValue,
+                  safeMaxValue,
+                  maxInclusive,
+                ],
+              },
+            ];
+          }
         }
       }
     } else {
