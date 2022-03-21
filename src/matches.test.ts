@@ -1,6 +1,6 @@
 import { compileQuery } from "./compile";
 import { Environment, matches } from "./matches";
-import util from "util";
+// import util from "util";
 
 const DEFAULT_DIMENSIONS = {
   widthPx: 1280,
@@ -366,15 +366,66 @@ test("matches monochrome", () => {
   expect(check("@media (monochrome)", blackAndWhite)).toBe(true);
 });
 
-// "any-hover": "none" | "hover";
-// "any-pointer": "none" | "coarse" | "fine";
-// "overflow-block": "none" | "scroll" | "paged";
-// "overflow-inline": "none" | "scroll";
-// scan: "interlace" | "progressive";
-// update: "none" | "slow" | "fast";
-// color: ConditionRange;
-// "device-aspect-ratio": ConditionRange<[number, number]>;
-// "device-height": ConditionRange;
-// "device-width": ConditionRange;
-// height: ConditionRange;
-// resolution: ConditionRange;
+test("matches others", () => {
+  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
+    const compiled = compileQuery(query);
+    // console.log(
+    //   util.inspect(compiled, {
+    //     depth: 10,
+    //     colors: true,
+    //   })
+    // );
+    return matches(compiled, {
+      ...DEFAULT_DIMENSIONS,
+      ...diffs,
+    });
+  };
+
+  // "device-height": ConditionRange;
+  // "device-width": ConditionRange;
+  // height: ConditionRange;
+
+  expect(check("@media (any-hover)")).toBe(true);
+  expect(check("@media (any-hover: none)")).toBe(false);
+  expect(check("@media (any-hover: hover)")).toBe(true);
+  expect(check("@media (any-pointer)")).toBe(true);
+  expect(check("@media (any-pointer: none)")).toBe(false);
+  expect(check("@media (any-pointer: coarse)")).toBe(false);
+  expect(check("@media (any-pointer: fine)")).toBe(true);
+  expect(check("@media (overflow-block)")).toBe(true);
+  expect(check("@media (overflow-block: none)")).toBe(false);
+  expect(check("@media (overflow-block: scroll)")).toBe(true);
+  expect(check("@media (overflow-block: paged)")).toBe(false);
+  expect(check("@media (overflow-inline)")).toBe(true);
+  expect(check("@media (overflow-inline: none)")).toBe(false);
+  expect(check("@media (overflow-inline: scroll)")).toBe(true);
+  expect(check("@media (scan)")).toBe(true);
+  expect(check("@media (scan: interlace)")).toBe(false);
+  expect(check("@media (scan: progressive)")).toBe(true);
+  expect(check("@media (update)")).toBe(true);
+  expect(check("@media (update: none)")).toBe(false);
+  expect(check("@media (update: slow)")).toBe(false);
+  expect(check("@media (update: fast)")).toBe(true);
+  expect(check("@media (update)")).toBe(true);
+  expect(check("@media (update: none)")).toBe(false);
+  expect(check("@media (update: slow)")).toBe(false);
+  expect(check("@media (color)")).toBe(true);
+  expect(check("@media (color: 8)")).toBe(true);
+  expect(check("@media (min-color: 4)")).toBe(true);
+  expect(check("@media (color: 0)")).toBe(false);
+  expect(check("@media not (color)")).toBe(false);
+  expect(check("@media (device-aspect-ratio)")).toBe(true);
+  expect(check("@media (device-aspect-ratio: 16/10)")).toBe(true);
+  expect(check("@media (min-device-aspect-ratio: 1)")).toBe(true);
+  expect(check("@media (device-aspect-ratio: 1/2)")).toBe(false);
+  expect(check("@media not (device-aspect-ratio)")).toBe(false);
+  expect(check("@media (height: 800px)")).toBe(true);
+  expect(check("@media (max-height: 1000px)")).toBe(true);
+  expect(check("@media (min-height: 1000px)")).toBe(false);
+  expect(check("@media (device-width: 1280px)")).toBe(true);
+  expect(check("@media (max-device-width: 1000px)")).toBe(false);
+  expect(check("@media (min-device-width: 1000px)")).toBe(true);
+  expect(check("@media (device-height: 800px)")).toBe(true);
+  expect(check("@media (max-device-height: 1000px)")).toBe(true);
+  expect(check("@media (min-device-height: 1000px)")).toBe(false);
+});
