@@ -1,5 +1,6 @@
 {
   "name": "media-query-fns",
+  "description": "Useful functions for working with CSS media queries in JS/TS",
   "version": "0.0.0",
   "main": "_dist/cjs/index.js",
   "module": "_dist/esm/index.js",
@@ -56,7 +57,7 @@
     "*.{js,css,md}": "prettier --write"
   },
   "files": [
-    "_dist/**/*"
+    "_dist"
   ],
   "release": {
     "branches": [
