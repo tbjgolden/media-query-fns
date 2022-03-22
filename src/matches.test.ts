@@ -381,10 +381,6 @@ test("matches others", () => {
     });
   };
 
-  // "device-height": ConditionRange;
-  // "device-width": ConditionRange;
-  // height: ConditionRange;
-
   expect(check("@media (any-hover)")).toBe(true);
   expect(check("@media (any-hover: none)")).toBe(false);
   expect(check("@media (any-hover: hover)")).toBe(true);

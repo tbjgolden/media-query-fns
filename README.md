@@ -16,7 +16,7 @@ Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) w
 - [x] **parses any correct CSS media queries**
 - [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-4/
 - [x] **TypeScript friendly**
-- [x] **All valid queries parsed and interpreted, even newer syntax like
+- [x] **all valid queries parsed and interpreted, even newer syntax like
       `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (monochrome))`**
 
 ## Quickfire examples
@@ -39,16 +39,9 @@ console.log(matches(query, env(900) }));
 
 ## Considerations & Caveats
 
-This library:
+This library doesn't support calc because it [follows the spec](https://www.w3.org/TR/mediaqueries-4/#ref-for-media-feature%E2%91%A0%E2%93%AA).
 
-- converts units to a base unit (px for lengths, dppx for resolution, hz for frequency)
-  - there's currently no way to pass in how special units like rem and vw should be converted to px
-- doesn't support calc - [following the spec](https://www.w3.org/TR/mediaqueries-4/#ref-for-media-feature%E2%91%A0%E2%93%AA)
-  - many browsers do support calc, but they probably shouldn't - not just because of the spec but because it opens up a Pandora's box of nasty edge cases
-
-Finally, this behavior is currently not supported in matches:
-
-> If a media feature references a concept which does not exist on the device where the UA is running (for example, speech UAs do not have a concept of “width”), the media feature must always evaluate to false.
+Many browsers do support calc to some extent, but they probably shouldn't as it opens up a Pandora's box of nasty edge cases that would lead to browser inconsistencies (without a spec to unify them, anyway).
 
 ## Installation
 

@@ -55,6 +55,9 @@
     "*.js": "eslint --cache --fix",
     "*.{js,css,md}": "prettier --write"
   },
+  "files": [
+    "_dist/**/*"
+  ],
   "release": {
     "branches": [
       "main"
