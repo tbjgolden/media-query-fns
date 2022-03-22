@@ -238,15 +238,6 @@ export const matches = (
           matches = false;
           break;
         }
-      } else if (k === "orientation") {
-        const v = p[k];
-        if (
-          (v === "portrait" && env.widthPx > env.heightPx) ||
-          (v === "landscape" && env.widthPx < env.heightPx)
-        ) {
-          matches = false;
-          break;
-        }
       } else if (k === "overflow-block") {
         const v = p[k];
         if (v !== env.overflowBlock) {

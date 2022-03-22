@@ -1,3 +1,3 @@
 export * from "./compile";
 export * from "./matches";
-export * from "./human";
+export * from "./english";

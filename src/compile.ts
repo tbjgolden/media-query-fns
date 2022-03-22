@@ -24,7 +24,6 @@ export type FullFeatureSet = {
   ];
   grid: 0 | 1;
   hover: "none" | "hover";
-  orientation: "portrait" | "landscape";
   "overflow-block": "none" | "scroll" | "paged";
   "overflow-inline": "none" | "scroll";
   pointer: "none" | "coarse" | "fine";
@@ -165,20 +164,19 @@ export type EvaluateResult = {
   neverFeatures: string[];
 };
 
-const DISCRETE_FEATURES = {
+export const DISCRETE_FEATURES = {
   "any-hover": { none: 1, hover: 1 },
   "any-pointer": { none: 1, coarse: 1, fine: 1 },
   "color-gamut": { srgb: 1, p3: 1, rec2020: 1 },
   grid: { 0: 1, 1: 1 },
   hover: { none: 1, hover: 1 },
-  orientation: { portrait: 1, landscape: 1 },
   "overflow-block": { none: 1, scroll: 1, paged: 1 },
   "overflow-inline": { none: 1, scroll: 1 },
   pointer: { none: 1, coarse: 1, fine: 1 },
   scan: { interlace: 1, progressive: 1 },
   update: { none: 1, slow: 1, fast: 1 },
 } as const;
-const RANGE_FEATURES = {
+export const RANGE_FEATURES = {
   "aspect-ratio": {
     feature: "aspect-ratio",
     type: "ratio",
@@ -386,7 +384,6 @@ export const mergeConditionSets = (
         if (
           key === "any-hover" ||
           key === "any-pointer" ||
-          key === "orientation" ||
           key === "overflow-block" ||
           key === "overflow-inline" ||
           key === "hover" ||
@@ -455,97 +452,100 @@ export const notConditionSets = (
 };
 
 export const invertConditionSet = (set: ConditionSet): ConditionSets => {
-  let outputSets: ConditionSets = [{}];
-  for (const k in set) {
-    const key = k as keyof typeof set;
-    if (key === "invalid-features") {
-      outputSets = outputSets.map((prevSet) => ({
-        ...prevSet,
-        "invalid-features": set[key],
-      }));
-    } else if (key === "media-type") {
-      //
-    } else if (set[key] === "{invalid}") {
-      outputSets = outputSets.map((prevSet) => ({
-        ...prevSet,
-        [key]: "{invalid}",
-      }));
-    } else if (set[key] === "{never}") {
-      // do not add key (effectively removing it from result set)
-    } else if (key in DISCRETE_FEATURES) {
-      const dKey = key as keyof typeof DISCRETE_FEATURES;
-      const dSet = set as FullFeatureSet;
-      if (dKey === "color-gamut") {
-        const prevGamutRange = dSet["color-gamut"];
-        outputSets = outputSets.map((set) => ({
-          ...set,
-          "color-gamut": [
-            !prevGamutRange[0],
-            !prevGamutRange[1],
-            !prevGamutRange[2],
-            !prevGamutRange[3],
-          ],
-        }));
-      } else if (dKey === "grid") {
-        const before = dSet[dKey];
+  if (Object.keys(set).length === 0) {
+    return [];
+  } else {
+    let outputSets: ConditionSets = [{}];
+    for (const k in set) {
+      const key = k as keyof typeof set;
+      if (key === "invalid-features") {
         outputSets = outputSets.map((prevSet) => ({
           ...prevSet,
-          grid: before === 0 ? 1 : 0,
+          "invalid-features": set[key],
         }));
-      } else {
-        const values = Object.keys(DISCRETE_FEATURES[dKey]);
-        const before = dSet[dKey];
-        outputSets = outputSets.flatMap((prevSet) =>
-          values.reduce((sets: ConditionSets, next) => {
-            if (next !== before) {
-              sets.push({
-                ...prevSet,
-                [dKey]: next,
-              });
-            }
-            return sets;
-          }, [])
-        );
-      }
-    } else if (key in RANGE_FEATURES) {
-      const rKey = key as keyof typeof RANGE_FEATURES;
-      const rSet = set as FullFeatureSet;
-      const [minInclusive, min, max, maxInclusive] = rSet[rKey];
-      const isMinBounded = min !== -Infinity || !minInclusive;
-      const isMaxBounded = max !== Infinity || !maxInclusive;
-      if (isMinBounded && isMaxBounded) {
-        outputSets = outputSets.flatMap((set) => [
-          {
-            ...set,
-            [rKey]: [true, -Infinity, min, !minInclusive],
-          },
-          {
-            ...set,
-            [rKey]: [!maxInclusive, max, Infinity, true],
-          },
-        ]);
-      } else if (!isMinBounded && !isMaxBounded) {
-        outputSets = outputSets.map((set) => ({
-          ...set,
-          [rKey]: "{never}",
+      } else if (key === "media-type") {
+        // ignore
+      } else if (set[key] === "{invalid}") {
+        outputSets = outputSets.map((prevSet) => ({
+          ...prevSet,
+          [key]: "{invalid}",
         }));
-      } else {
-        if (isMinBounded) {
+      } else if (set[key] === "{never}") {
+        // do not add key (effectively removing it from result set)
+      } else if (key in DISCRETE_FEATURES) {
+        const dKey = key as keyof typeof DISCRETE_FEATURES;
+        const dSet = set as FullFeatureSet;
+        if (dKey === "color-gamut") {
+          const prevGamutRange = dSet["color-gamut"];
           outputSets = outputSets.map((set) => ({
             ...set,
-            [rKey]: [true, -Infinity, min, !minInclusive],
+            "color-gamut": [
+              !prevGamutRange[0],
+              !prevGamutRange[1],
+              !prevGamutRange[2],
+              !prevGamutRange[3],
+            ],
+          }));
+        } else if (dKey === "grid") {
+          const before = dSet[dKey];
+          outputSets = outputSets.map((prevSet) => ({
+            ...prevSet,
+            grid: before === 0 ? 1 : 0,
           }));
         } else {
+          const values = Object.keys(DISCRETE_FEATURES[dKey]);
+          const before = dSet[dKey];
+          outputSets = outputSets.flatMap((prevSet) =>
+            values.reduce((sets: ConditionSets, next) => {
+              if (next !== before) {
+                sets.push({
+                  ...prevSet,
+                  [dKey]: next,
+                });
+              }
+              return sets;
+            }, [])
+          );
+        }
+      } else if (key in RANGE_FEATURES) {
+        const rKey = key as keyof typeof RANGE_FEATURES;
+        const rSet = set as FullFeatureSet;
+        const [minInclusive, min, max, maxInclusive] = rSet[rKey];
+        const isMinBounded = min !== -Infinity || !minInclusive;
+        const isMaxBounded = max !== Infinity || !maxInclusive;
+        if (isMinBounded && isMaxBounded) {
+          outputSets = outputSets.flatMap((set) => [
+            {
+              ...set,
+              [rKey]: [true, -Infinity, min, !minInclusive],
+            },
+            {
+              ...set,
+              [rKey]: [!maxInclusive, max, Infinity, true],
+            },
+          ]);
+        } else if (!isMinBounded && !isMaxBounded) {
           outputSets = outputSets.map((set) => ({
             ...set,
-            [rKey]: [!maxInclusive, max, Infinity, true],
+            [rKey]: "{never}",
           }));
+        } else {
+          if (isMinBounded) {
+            outputSets = outputSets.map((set) => ({
+              ...set,
+              [rKey]: [true, -Infinity, min, !minInclusive],
+            }));
+          } else {
+            outputSets = outputSets.map((set) => ({
+              ...set,
+              [rKey]: [!maxInclusive, max, Infinity, true],
+            }));
+          }
         }
       }
     }
+    return outputSets;
   }
-  // TODO: add mediaType and invalidFeatures
-  return outputSets;
 };
 
 export const mediaFeatureToConditionSets = (
@@ -608,14 +608,17 @@ export const mediaFeatureToConditionSets = (
 
   if (
     !(mediaFeature.feature in DISCRETE_FEATURES) &&
-    !(mediaFeature.feature in RANGE_FEATURES)
+    !(mediaFeature.feature in RANGE_FEATURES) &&
+    mediaFeature.feature !== "orientation"
   ) {
     return mediaFeature.feature;
   }
 
   if (mediaFeature.context === "boolean") {
     const feature = mediaFeature.feature as keyof FullFeatureSet;
-    if (feature === "color-gamut") {
+    if (mediaFeature.feature === "orientation") {
+      return [{}];
+    } else if (feature === "color-gamut") {
       // colorGamut has no 'none' value, but treats srgb as truthy
       return [
         {
@@ -632,7 +635,6 @@ export const mediaFeatureToConditionSets = (
       feature === "any-hover" ||
       feature === "any-pointer" ||
       feature === "hover" ||
-      feature === "orientation" ||
       feature === "overflow-block" ||
       feature === "overflow-inline" ||
       feature === "pointer" ||
@@ -723,6 +725,31 @@ export const mediaFeatureToConditionSets = (
         ];
       }
     }
+  } else if (mediaFeature.feature === "orientation") {
+    if (
+      mediaFeature.context !== "range" &&
+      mediaFeature.value.type === "<ident-token>"
+    ) {
+      const { value } = mediaFeature.value;
+      if (value === "landscape") {
+        return [
+          {
+            "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
+          },
+        ];
+      } else if (value === "portrait") {
+        return [
+          {
+            "aspect-ratio": [false, [0, 1], [1, 1], true],
+          },
+        ];
+      }
+    }
+    return [
+      {
+        "invalid-features": ["orientation"],
+      },
+    ];
   } else {
     // mediaFeature.feature in RANGE_FEATURES
     const featureData =
@@ -1073,6 +1100,15 @@ export const simplifyConditionSets = (
       if (key === "invalid-features") {
         continue;
       } else {
+        if (key === "color-gamut") {
+          const prev = set[key].toString();
+          if (prev === "false,false,false,false") {
+            set[key] = "{never}";
+          } else if (prev === "true,true,true,true") {
+            continue;
+          }
+        }
+
         const value = set[key];
         if (value === "{invalid}") {
           invalidFeatures.add(key);
