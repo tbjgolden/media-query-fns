@@ -8,7 +8,7 @@ import {
   UnitConversions,
 } from "./units";
 
-const log = (x: any) =>
+const log = (x: unknown) =>
   console.log(
     util.inspect(x, {
       depth: 10,

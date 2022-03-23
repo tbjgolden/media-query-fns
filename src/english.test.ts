@@ -1,7 +1,7 @@
 import { compileQuery } from "./compile";
 import { toEnglishData, toEnglishString } from "./english";
 import util from "util";
-const log = (x: any) =>
+const log = (x: unknown) =>
   console.log(
     util.inspect(x, {
       depth: 10,
