@@ -3,7 +3,18 @@ import {
   DimensionToken,
   RatioToken,
   IdentToken,
+  MediaFeature,
 } from "media-query-parser";
+import {
+  DISCRETE_FEATURES,
+  isFeatureKey,
+  isRangeKey,
+  MediaFeatures,
+  RangeFeatures,
+  RangeNumberFeatures,
+  RANGE_NUMBER_FEATURES,
+  RANGE_RATIO_FEATURES,
+} from "./helpers";
 
 export type LengthUnit = {
   type: "dimension";
@@ -270,4 +281,202 @@ export const compileStaticUnitConversions = (
     pc: 16,
     pt: 16,
   };
+};
+
+export type DoubleRange = {
+  type: "double";
+  name: keyof RangeFeatures;
+  min: Unit;
+  minOp: "<" | "<=";
+  maxOp: "<" | "<=";
+  max: Unit;
+};
+export type SingleRange = {
+  type: "single";
+  name: keyof RangeFeatures;
+  op: "<" | "<=" | ">" | ">=";
+  value: Unit;
+};
+export type Equality = {
+  type: "equals";
+  name: keyof MediaFeatures;
+  value: Unit;
+};
+export type BoolCtx = {
+  type: "boolean";
+  name: keyof MediaFeatures;
+};
+export type Invalid = {
+  type: "invalid";
+  name: string;
+};
+
+const REVERSED_OP_MAP = {
+  "<": ">",
+  "<=": ">=",
+  ">": "<",
+  ">=": "<=",
+} as const;
+
+export const simplifyMediaFeature = (
+  mediaFeature: MediaFeature,
+  unitConversions: CompiledUnitConversions
+): DoubleRange | SingleRange | Equality | BoolCtx | Invalid => {
+  const { feature } = mediaFeature;
+
+  if (mediaFeature.context === "range") {
+    if (isRangeKey(feature)) {
+      const { range } = mediaFeature;
+      if (range.leftToken !== null && range.rightToken !== null) {
+        if (range.leftOp === "<" || range.leftOp === "<=") {
+          return {
+            type: "double",
+            name: feature,
+            minOp: range.leftOp,
+            min: convertToUnit(range.leftToken, unitConversions),
+            maxOp: range.rightOp,
+            max: convertToUnit(range.rightToken, unitConversions),
+          };
+        } else {
+          return {
+            type: "double",
+            name: feature,
+            minOp: range.rightOp === ">" ? "<" : "<=",
+            min: convertToUnit(range.rightToken, unitConversions),
+            maxOp: range.leftOp ? "<" : "<=",
+            max: convertToUnit(range.leftToken, unitConversions),
+          };
+        }
+      } else if (range.rightToken !== null) {
+        if (range.rightOp === "=") {
+          return {
+            type: "equals",
+            name: feature,
+            value: convertToUnit(range.rightToken, unitConversions),
+          };
+        } else {
+          return {
+            type: "single",
+            name: feature,
+            op: range.rightOp,
+            value: convertToUnit(range.rightToken, unitConversions),
+          };
+        }
+      } else {
+        if (range.leftOp === "=") {
+          return {
+            type: "equals",
+            name: feature,
+            value: convertToUnit(range.leftToken, unitConversions),
+          };
+        } else {
+          return {
+            type: "single",
+            name: feature,
+            op: REVERSED_OP_MAP[range.leftOp],
+            value: convertToUnit(range.leftToken, unitConversions),
+          };
+        }
+      }
+    }
+  } else if (mediaFeature.context === "value") {
+    if (feature === "orientation") {
+      if (mediaFeature.prefix === null) {
+        if (mediaFeature.value.type === "<ident-token>") {
+          if (mediaFeature.value.value === "portrait") {
+            return {
+              type: "single",
+              name: "aspect-ratio",
+              op: "<=",
+              value: {
+                type: "ratio",
+                numerator: 1,
+                denominator: 1,
+              },
+            };
+          } else if (mediaFeature.value.value === "landscape") {
+            return {
+              type: "single",
+              name: "aspect-ratio",
+              op: ">=",
+              value: {
+                type: "ratio",
+                numerator: 1,
+                denominator: 1,
+              },
+            };
+          }
+        }
+      }
+    } else if (isFeatureKey(feature)) {
+      if (mediaFeature.prefix === null) {
+        return {
+          type: "equals",
+          name: feature,
+          value: convertToUnit(mediaFeature.value, unitConversions),
+        };
+      } else if (isRangeKey(feature)) {
+        if (mediaFeature.prefix === "min") {
+          return {
+            type: "single",
+            name: feature,
+            op: ">=",
+            value: convertToUnit(mediaFeature.value, unitConversions),
+          };
+        } else {
+          return {
+            type: "single",
+            name: feature,
+            op: "<=",
+            value: convertToUnit(mediaFeature.value, unitConversions),
+          };
+        }
+      }
+    }
+  } else if (isFeatureKey(feature)) {
+    return {
+      type: "boolean",
+      name: feature,
+    };
+  }
+
+  return {
+    type: "invalid",
+    name: feature,
+  };
+};
+
+export const getRatio = (unit: Unit): null | readonly [number, number] => {
+  if (unit.type === "number" && unit.value > 0) {
+    return [unit.value, 1];
+  } else if (unit.type === "ratio") {
+    return [unit.numerator, unit.denominator];
+  } else {
+    return null;
+  }
+};
+
+export const getValue = (
+  unit: Unit,
+  name: keyof RangeNumberFeatures
+): null | number => {
+  const featData = RANGE_NUMBER_FEATURES[name];
+  if (unit.type === "infinite") {
+    if (name === "resolution") return Infinity;
+  } else if (featData.type === "integer") {
+    if (unit.type === "number" && Number.isInteger(unit.value)) {
+      return unit.value;
+    }
+  } else if (featData.type === "resolution") {
+    if (unit.type === "dimension" && unit.subtype === "resolution") {
+      return unit.dppx;
+    }
+  } else if (featData.type === "length") {
+    if (unit.type === "dimension" && unit.subtype === "length") {
+      return unit.px;
+    } else if (unit.type === "number" && unit.value === 0) {
+      return 0;
+    }
+  }
+  return null;
 };

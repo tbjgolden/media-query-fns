@@ -16,7 +16,9 @@
     "build": "node ./_scripts/build.js",
     "test": "jest",
     "coverage": "jest --coverage",
-    "watch": "jest --watch"
+    "watch": "jest --watch",
+    "lint": "eslint src",
+    "husky": "husky install"
   },
   "dependencies": {
     "media-query-parser": "^1.0.2"
