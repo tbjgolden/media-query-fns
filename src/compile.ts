@@ -8,10 +8,19 @@ import {
   RatioToken,
   IdentToken,
 } from "media-query-parser";
+import util from "util";
+
+const log = (x: any) =>
+  console.log(
+    util.inspect(x, {
+      depth: 10,
+      colors: true,
+    })
+  );
 
 export type ConditionRange<T = number> = [boolean, T, T, boolean];
 
-export type Condition<T> = T | "{never}" | "{invalid}";
+export type Condition<T> = T | "{false}" | "{true}" | "{invalid}";
 
 export type FullFeatureSet = {
   "any-hover": "none" | "hover";
@@ -49,7 +58,7 @@ export type FullConditionSet = {
     | "not-screen"
     | "not-print"
     | "all"
-    | "{never}";
+    | "{false}";
   "invalid-features": string[];
 };
 export type ConditionSet = Partial<FullConditionSet>;
@@ -153,7 +162,7 @@ export type SimplifiedPermutation = Partial<
   FullFeatureSet & {
     "media-type": Exclude<
       FullConditionSet["media-type"],
-      "all" | "{never}" | "{invalid}"
+      "all" | "{false}" | "{true}" | "{invalid}"
     >;
   }
 >;
@@ -161,7 +170,7 @@ export type SimplifiedPermutation = Partial<
 export type EvaluateResult = {
   permutations: SimplifiedPermutation[];
   invalidFeatures: string[];
-  neverFeatures: string[];
+  falseFeatures: string[];
 };
 
 export const DISCRETE_FEATURES = {
@@ -376,8 +385,12 @@ export const mergeConditionSets = (
         A[key].push(...B[key]);
       } else if (output[key] === "{invalid}" || setB[key] === "{invalid}") {
         A[key] = "{invalid}";
-      } else if (output[key] === "{never}" || setB[key] === "{never}") {
-        A[key] = "{never}";
+      } else if (output[key] === "{false}" || setB[key] === "{false}") {
+        A[key] = "{false}";
+      } else if (output[key] === "{true}") {
+        A[key] = B[key] as any;
+      } else if (setB[key] === "{true}") {
+        // nothing, A[key] doesn't change
       } else {
         const A = output as FullFeatureSet;
         const B = setB as FullFeatureSet;
@@ -393,7 +406,7 @@ export const mergeConditionSets = (
           key === "update"
         ) {
           // this is type safe, but ts can't work it out
-          (A as any)[key] = A[key] === B[key] ? A[key] : "{never}";
+          (A as any)[key] = A[key] === B[key] ? A[key] : "{false}";
         } else if (key === "color-gamut") {
           (A as any)[key] = [
             A[key][0] && B[key][0],
@@ -452,6 +465,8 @@ export const notConditionSets = (
 };
 
 export const invertConditionSet = (set: ConditionSet): ConditionSets => {
+  log("invert");
+  log(set);
   if (Object.keys(set).length === 0) {
     return [];
   } else {
@@ -470,8 +485,16 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
           ...prevSet,
           [key]: "{invalid}",
         }));
-      } else if (set[key] === "{never}") {
-        // do not add key (effectively removing it from result set)
+      } else if (set[key] === "{false}") {
+        outputSets = outputSets.map((prevSet) => ({
+          ...prevSet,
+          [key]: "{true}",
+        }));
+      } else if (set[key] === "{true}") {
+        outputSets = outputSets.map((prevSet) => ({
+          ...prevSet,
+          [key]: "{false}",
+        }));
       } else if (key in DISCRETE_FEATURES) {
         const dKey = key as keyof typeof DISCRETE_FEATURES;
         const dSet = set as FullFeatureSet;
@@ -508,38 +531,79 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
           );
         }
       } else if (key in RANGE_FEATURES) {
-        const rKey = key as keyof typeof RANGE_FEATURES;
-        const rSet = set as FullFeatureSet;
-        const [minInclusive, min, max, maxInclusive] = rSet[rKey];
-        const isMinBounded = min !== -Infinity || !minInclusive;
-        const isMaxBounded = max !== Infinity || !maxInclusive;
-        if (isMinBounded && isMaxBounded) {
-          outputSets = outputSets.flatMap((set) => [
-            {
-              ...set,
-              [rKey]: [true, -Infinity, min, !minInclusive],
-            },
-            {
-              ...set,
-              [rKey]: [!maxInclusive, max, Infinity, true],
-            },
-          ]);
-        } else if (!isMinBounded && !isMaxBounded) {
-          outputSets = outputSets.map((set) => ({
-            ...set,
-            [rKey]: "{never}",
-          }));
-        } else {
-          if (isMinBounded) {
+        if (key === "aspect-ratio" || key === "device-aspect-ratio") {
+          const rSet = set as FullFeatureSet;
+          const [minInclusive, n, x, maxInclusive] = rSet[key];
+          const min = n[0] / n[1];
+          const max = x[0] / x[1];
+          const isMinBounded = min !== -Infinity || !minInclusive;
+          const isMaxBounded = max !== Infinity || !maxInclusive;
+          if (isMinBounded && isMaxBounded) {
+            outputSets = outputSets.flatMap((set) => [
+              {
+                ...set,
+                [key]: [true, [-Infinity, 1], n, !minInclusive],
+              },
+              {
+                ...set,
+                [key]: [!maxInclusive, x, [Infinity, 1], true],
+              },
+            ]);
+          } else if (!isMinBounded && !isMaxBounded) {
             outputSets = outputSets.map((set) => ({
               ...set,
-              [rKey]: [true, -Infinity, min, !minInclusive],
+              [key]: "{false}",
             }));
           } else {
+            if (isMinBounded) {
+              outputSets = outputSets.map((set) => ({
+                ...set,
+                [key]: [true, [-Infinity, 1], n, !minInclusive],
+              }));
+            } else {
+              outputSets = outputSets.map((set) => ({
+                ...set,
+                [key]: [!maxInclusive, x, [Infinity, 1], true],
+              }));
+            }
+          }
+        } else {
+          const rKey = key as keyof Omit<
+            typeof RANGE_FEATURES,
+            "aspect-ratio" | "device-aspect-ratio"
+          >;
+          const rSet = set as FullFeatureSet;
+          const [minInclusive, min, max, maxInclusive] = rSet[rKey];
+          const isMinBounded = min !== -Infinity || !minInclusive;
+          const isMaxBounded = max !== Infinity || !maxInclusive;
+          if (isMinBounded && isMaxBounded) {
+            outputSets = outputSets.flatMap((set) => [
+              {
+                ...set,
+                [rKey]: [true, -Infinity, min, !minInclusive],
+              },
+              {
+                ...set,
+                [rKey]: [!maxInclusive, max, Infinity, true],
+              },
+            ]);
+          } else if (!isMinBounded && !isMaxBounded) {
             outputSets = outputSets.map((set) => ({
               ...set,
-              [rKey]: [!maxInclusive, max, Infinity, true],
+              [rKey]: "{false}",
             }));
+          } else {
+            if (isMinBounded) {
+              outputSets = outputSets.map((set) => ({
+                ...set,
+                [rKey]: [true, -Infinity, min, !minInclusive],
+              }));
+            } else {
+              outputSets = outputSets.map((set) => ({
+                ...set,
+                [rKey]: [!maxInclusive, max, Infinity, true],
+              }));
+            }
           }
         }
       }
@@ -816,7 +880,7 @@ export const mediaFeatureToConditionSets = (
         ) {
           return [
             {
-              resolution: "{never}",
+              resolution: "{false}",
             },
           ];
         } else {
@@ -885,7 +949,7 @@ export const mediaFeatureToConditionSets = (
         ) {
           return [
             {
-              resolution: "{never}",
+              resolution: "{false}",
             },
           ];
         } else {
@@ -948,7 +1012,7 @@ export const mediaFeatureToConditionSets = (
           ) {
             return [
               {
-                resolution: "{never}",
+                resolution: "{false}",
               },
             ];
           } else {
@@ -1021,7 +1085,7 @@ export const mediaFeatureToConditionSets = (
         ) {
           return [
             {
-              [feature]: "{never}",
+              [feature]: "{false}",
             },
           ];
         } else {
@@ -1079,7 +1143,7 @@ export const simplifyConditionSets = (
 ): EvaluateResult => {
   const permutations: SimplifiedPermutation[] = [];
   const invalidFeatures = new Set<string>();
-  const neverFeatures = new Set<string>();
+  const falseFeatures = new Set<string>();
 
   for (const conditionSet of conditionSets) {
     let isUnmatchable = false;
@@ -1103,7 +1167,7 @@ export const simplifyConditionSets = (
         if (key === "color-gamut") {
           const prev = set[key].toString();
           if (prev === "false,false,false,false") {
-            set[key] = "{never}";
+            set[key] = "{false}";
           } else if (prev === "true,true,true,true") {
             continue;
           }
@@ -1113,9 +1177,11 @@ export const simplifyConditionSets = (
         if (value === "{invalid}") {
           invalidFeatures.add(key);
           isUnmatchable = true;
-        } else if (value === "{never}") {
-          neverFeatures.add(key);
+        } else if (value === "{false}") {
+          falseFeatures.add(key);
           isUnmatchable = true;
+        } else if (value === "{true}") {
+          // skip. {true} is required as an intermediary value only
         } else {
           if (key !== "media-type" || value !== "all") {
             if (key in RANGE_FEATURES) {
@@ -1150,7 +1216,7 @@ export const simplifyConditionSets = (
                   (maxValue === ubValue && (!ubInclusive || maxInclusive));
 
                 if (isMinGTUpperBound || isMaxLTLowerBound) {
-                  neverFeatures.add(key);
+                  falseFeatures.add(key);
                   isUnmatchable = true;
                 } else if (isMinLTELowerBound && isMaxGTEUpperBound) {
                   // {always}
@@ -1177,7 +1243,7 @@ export const simplifyConditionSets = (
                   ] as any;
                 }
               } else {
-                neverFeatures.add(key);
+                falseFeatures.add(key);
                 isUnmatchable = true;
               }
             } else {
@@ -1196,7 +1262,7 @@ export const simplifyConditionSets = (
   return {
     permutations,
     invalidFeatures: [...invalidFeatures].sort(),
-    neverFeatures: [...neverFeatures].sort(),
+    falseFeatures: [...falseFeatures].sort(),
   };
 };
 

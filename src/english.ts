@@ -55,7 +55,7 @@ type QuerySegment = {
 export type HumanFriendlyData = {
   querySegmentLists: QuerySegment[][];
   invalidFeatures: EvaluateResult["invalidFeatures"];
-  neverFeatures: EvaluateResult["neverFeatures"];
+  falseFeatures: EvaluateResult["falseFeatures"];
 };
 
 const gcd = (large: number, small: number): number => {
@@ -753,7 +753,7 @@ export const toEnglishData = (result: EvaluateResult): HumanFriendlyData => {
       ? [[{ type: "always", value: "always" }]]
       : querySegmentLists,
     invalidFeatures: result.invalidFeatures,
-    neverFeatures: result.neverFeatures,
+    falseFeatures: result.falseFeatures,
   };
 };
 

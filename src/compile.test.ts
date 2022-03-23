@@ -1,4 +1,8 @@
-import { compileQuery, simplifyConditionSets } from "./compile";
+import {
+  compileQuery,
+  invertConditionSet,
+  simplifyConditionSets,
+} from "./compile";
 
 test("evaluateQuery", () => {
   expect(compileQuery("(min-width: 120px)")).toEqual(
@@ -30,7 +34,7 @@ test("evaluateQuery", () => {
 test("checking hyphenated keys", () => {
   expect(compileQuery("(min-aspect-ratio: 1/2)")).toEqual({
     invalidFeatures: [],
-    neverFeatures: [],
+    falseFeatures: [],
     permutations: [
       {
         "aspect-ratio": [true, [1, 2], [Infinity, 1], false],
@@ -112,7 +116,7 @@ test("handles not queries", () => {
     compileQuery("not ((min-width: 100px) and (max-width: 200px))")
   ).toEqual({
     invalidFeatures: [],
-    neverFeatures: [],
+    falseFeatures: [],
     permutations: [
       { width: [true, 0, 100, false] },
       { width: [false, 200, Infinity, false] },
@@ -126,7 +130,7 @@ test("handles not queries", () => {
 test("correctly handles weird queries", () => {
   expect(compileQuery("not (width: infinite)")).toEqual({
     invalidFeatures: ["width"],
-    neverFeatures: [],
+    falseFeatures: [],
     permutations: [],
   });
   expect(compileQuery("(aspect-ratio: 0.01/1)")).toEqual(
@@ -236,4 +240,62 @@ test("custom units", () => {
       },
     ])
   );
+});
+
+test.only("found bugs", () => {
+  expect(
+    invertConditionSet({
+      width: [true, 1000, Infinity, true],
+      "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
+    }).sort((a, b) => ((a.width?.[1] ?? 0) > (b.width?.[1] ?? 0) ? 1 : -1))
+  ).toEqual([
+    // {
+    //   "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
+    //   width: [true, -Infinity, 1000, false],
+    // },
+    // {
+    //   "aspect-ratio": [true, -Infinity, [1, 1], false],
+    //   width: [true, 1000, Infinity, true],
+    // },
+  ]);
+
+  // "not screen and (min-width: 1000px) and (orientation: landscape)"
+  // "not (screen and (min-width: 1000px) and (orientation: landscape))"
+  // "(not-screen or (screen and width < 1000px) or (screen and aspect-ratio < 1/1))"
+  expect(
+    compileQuery(
+      "not screen and (min-width: 1000px) and (orientation: landscape)"
+    )
+  ).toEqual({
+    permutations: [
+      { "media-type": "not-screen" },
+      {
+        "aspect-ratio": [false, [0, 1], [1, 1], false],
+        "media-type": "screen",
+      },
+      {
+        width: [true, 0, 1000, false],
+        "media-type": "screen",
+      },
+    ],
+    invalidFeatures: [],
+    falseFeatures: [],
+  });
+
+  // "(not ((min-width: 1000px) and (orientation: landscape)))"
+  // "(width < 1000px) or (aspect-ratio < 1/1)"
+  expect(
+    compileQuery("(not ((min-width: 1000px) and (orientation: landscape)))")
+  ).toEqual({
+    permutations: [
+      {
+        "aspect-ratio": [false, [0, 1], [1, 1], false],
+      },
+      {
+        width: [true, 0, 1000, false],
+      },
+    ],
+    invalidFeatures: [],
+    falseFeatures: [],
+  });
 });
