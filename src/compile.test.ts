@@ -1,12 +1,8 @@
-import {
-  compileQuery,
-  invertConditionSet,
-  simplifyConditionSets,
-} from "./compile";
+import { compileQuery, invertPerm, simplifyPerms } from "./compile";
 
 test("evaluateQuery", () => {
   expect(compileQuery("(min-width: 120px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [true, 120, Infinity, true],
@@ -14,7 +10,7 @@ test("evaluateQuery", () => {
     ])
   );
   expect(compileQuery("(min-width: 100px) and (max-width: 200px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [true, 100, 200, true],
@@ -22,7 +18,7 @@ test("evaluateQuery", () => {
     ])
   );
   expect(compileQuery("(50px < width <= 150px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [false, 50, 150, true],
@@ -35,7 +31,7 @@ test("checking hyphenated keys", () => {
   expect(compileQuery("(min-aspect-ratio: 1/2)")).toEqual({
     invalidFeatures: [],
     falseFeatures: [],
-    permutations: [
+    simplePerms: [
       {
         "aspect-ratio": [true, [1, 2], [Infinity, 1], false],
       },
@@ -45,7 +41,7 @@ test("checking hyphenated keys", () => {
 
 test("handles not queries", () => {
   expect(compileQuery("not (min-width: 120px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [true, -Infinity, 120, false],
@@ -55,7 +51,7 @@ test("handles not queries", () => {
   expect(
     compileQuery("not ((min-width: 100px) and (max-width: 200px))")
   ).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [true, -Infinity, 100, false],
@@ -69,7 +65,7 @@ test("handles not queries", () => {
   expect(
     compileQuery("screen and (not ((min-width: 100px) and (max-width: 200px)))")
   ).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "screen",
         width: [true, -Infinity, 100, false],
@@ -83,7 +79,7 @@ test("handles not queries", () => {
   expect(
     compileQuery("not print and (min-width: 100px) and (max-width: 200px)")
   ).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "not-print",
       },
@@ -102,7 +98,7 @@ test("handles not queries", () => {
       "not screen and (not ((min-width: 100px) and (max-width: 200px)))"
     )
   ).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "not-screen",
       },
@@ -117,7 +113,7 @@ test("handles not queries", () => {
   ).toEqual({
     invalidFeatures: [],
     falseFeatures: [],
-    permutations: [
+    simplePerms: [
       { width: [true, 0, 100, false] },
       { width: [false, 200, Infinity, false] },
     ],
@@ -131,17 +127,17 @@ test("correctly handles weird queries", () => {
   expect(compileQuery("not (width: infinite)")).toEqual({
     invalidFeatures: ["width"],
     falseFeatures: [],
-    permutations: [],
+    simplePerms: [],
   });
   expect(compileQuery("(aspect-ratio: 0.01/1)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "aspect-ratio": [true, [0.01, 1], [0.01, 1], true],
       },
     ])
   );
   expect(compileQuery("(height < 100px) or (height > 50px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         height: [true, 0, 100, false],
       },
@@ -153,11 +149,9 @@ test("correctly handles weird queries", () => {
 });
 
 test("not operator", () => {
-  expect(compileQuery("not (width < -1px)")).toEqual(
-    simplifyConditionSets([{}])
-  );
+  expect(compileQuery("not (width < -1px)")).toEqual(simplifyPerms([{}]));
   expect(compileQuery("not (min-width: 120px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [true, -Infinity, 120, false],
@@ -165,7 +159,7 @@ test("not operator", () => {
     ])
   );
   expect(compileQuery("not (max-width: 240px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [false, 240, Infinity, true],
@@ -173,7 +167,7 @@ test("not operator", () => {
     ])
   );
   expect(compileQuery("not (110px <= width <= 220px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "all",
         width: [true, -Infinity, 110, false],
@@ -185,7 +179,7 @@ test("not operator", () => {
     ])
   );
   expect(compileQuery("screen and (not (min-width: 120px))")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "screen",
         width: [true, -Infinity, 120, false],
@@ -193,7 +187,7 @@ test("not operator", () => {
     ])
   );
   expect(compileQuery("print and (not (max-width: 240px))")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "print",
         width: [false, 240, Infinity, true],
@@ -201,7 +195,7 @@ test("not operator", () => {
     ])
   );
   expect(compileQuery("not print and (110px <= width <= 220px)")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "not-print",
       },
@@ -216,7 +210,7 @@ test("not operator", () => {
     ])
   );
   expect(compileQuery("not print and (not (110px <= width <= 220px))")).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         "media-type": "not-print",
       },
@@ -234,7 +228,7 @@ test("custom units", () => {
       emPx: 1280,
     })
   ).toEqual(
-    simplifyConditionSets([
+    simplifyPerms([
       {
         width: [true, 1280, 1280, true],
       },
@@ -244,7 +238,7 @@ test("custom units", () => {
 
 test.only("found bugs", () => {
   expect(
-    invertConditionSet({
+    invertPerm({
       width: [true, 1000, Infinity, true],
       "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
     }).sort((a, b) => ((a.width?.[1] ?? 0) > (b.width?.[1] ?? 0) ? 1 : -1))
@@ -267,7 +261,7 @@ test.only("found bugs", () => {
       "not screen and (min-width: 1000px) and (orientation: landscape)"
     )
   ).toEqual({
-    permutations: [
+    simplePerms: [
       { "media-type": "not-screen" },
       {
         "aspect-ratio": [false, [0, 1], [1, 1], false],
@@ -287,7 +281,7 @@ test.only("found bugs", () => {
   expect(
     compileQuery("(not ((min-width: 1000px) and (orientation: landscape)))")
   ).toEqual({
-    permutations: [
+    simplePerms: [
       {
         "aspect-ratio": [false, [0, 1], [1, 1], false],
       },

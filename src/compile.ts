@@ -1,14 +1,12 @@
-import {
-  toAST,
-  AST,
-  MediaCondition,
-  MediaFeature,
-  NumberToken,
-  DimensionToken,
-  RatioToken,
-  IdentToken,
-} from "media-query-parser";
+import { toAST, AST, MediaCondition, MediaFeature } from "media-query-parser";
 import util from "util";
+import {
+  CompiledUnitConversions,
+  compileStaticUnitConversions,
+  convertToUnit,
+  Unit,
+  UnitConversions,
+} from "./units";
 
 const log = (x: any) =>
   console.log(
@@ -19,10 +17,12 @@ const log = (x: any) =>
   );
 
 export type ConditionRange<T = number> = [boolean, T, T, boolean];
-
 export type Condition<T> = T | "{false}" | "{true}" | "{invalid}";
+export type Conditional<T> = {
+  [Property in keyof T]: Condition<T[Property]>;
+};
 
-export type FullFeatureSet = {
+export type MediaFeatures = {
   "any-hover": "none" | "hover";
   "any-pointer": "none" | "coarse" | "fine";
   "color-gamut": [
@@ -49,9 +49,8 @@ export type FullFeatureSet = {
   resolution: ConditionRange;
   width: ConditionRange;
 };
-export type FullConditionSet = {
-  [Property in keyof FullFeatureSet]: Condition<FullFeatureSet[Property]>;
-} & {
+
+export type FullPerm = Conditional<MediaFeatures> & {
   "media-type":
     | "screen"
     | "print"
@@ -61,114 +60,17 @@ export type FullConditionSet = {
     | "{false}";
   "invalid-features": string[];
 };
-export type ConditionSet = Partial<FullConditionSet>;
-export type ConditionSets = ConditionSet[];
+export type Perm = Partial<FullPerm>;
+export type Perms = Perm[];
 
-export type StandardLengthUnit = {
-  type: "dimension";
-  subtype: "length";
-  px: number;
-};
-export type StandardTimeUnit = {
-  type: "dimension";
-  subtype: "time";
-  ms: number;
-};
-export type StandardFrequencyUnit = {
-  type: "dimension";
-  subtype: "frequency";
-  hz: number;
-};
-export type StandardResolutionUnit = {
-  type: "dimension";
-  subtype: "resolution";
-  dppx: number;
-};
-export type StandardInfiniteUnit = {
-  type: "infinite";
-};
-export type StandardIdentUnit = {
-  type: "ident";
-  value: string;
-};
-export type StandardDimensionUnit =
-  | StandardLengthUnit
-  | StandardTimeUnit
-  | StandardFrequencyUnit
-  | StandardResolutionUnit
-  | StandardInfiniteUnit
-  | StandardIdentUnit;
-
-export type StandardNumberUnit = {
-  type: "number";
-  value: number;
-};
-export type StandardRatioUnit = {
-  type: "ratio";
-  numerator: number;
-  denominator: number;
-};
-export type StandardUnit =
-  | StandardDimensionUnit
-  | StandardNumberUnit
-  | StandardRatioUnit;
-
-export type UnitConversions = {
-  // = 100vw
-  widthPx: number;
-  // = 100vh
-  heightPx: number;
-  // used to determine vi and vb
-  writingMode:
-    | "horizontal-tb"
-    | "vertical-rl"
-    | "vertical-lr"
-    | "sideways-rl"
-    | "sideways-lr";
-  // also used for rem
-  emPx: number;
-  // also used for rlh
-  lhPx: number;
-  // font-specific sizes
-  exPx: number;
-  chPx: number;
-  capPx: number;
-  icPx: number;
-};
-export type CompiledUnitConversions = {
-  vw: number;
-  vh: number;
-  vmin: number;
-  vmax: number;
-  vi: number;
-  vb: number;
-  em: number;
-  rem: number;
-  lh: number;
-  rlh: number;
-  ex: number;
-  ch: number;
-  cap: number;
-  ic: number;
-  cm: number;
-  mm: number;
-  in: number;
-  q: number;
-  pc: number;
-  pt: number;
-};
-
-export type SimplifiedPermutation = Partial<
-  FullFeatureSet & {
-    "media-type": Exclude<
-      FullConditionSet["media-type"],
-      "all" | "{false}" | "{true}" | "{invalid}"
-    >;
+export type SimplePerm = Partial<
+  MediaFeatures & {
+    "media-type": "screen" | "print" | "not-screen" | "not-print";
   }
 >;
 
 export type EvaluateResult = {
-  permutations: SimplifiedPermutation[];
+  simplePerms: SimplePerm[];
   invalidFeatures: string[];
   falseFeatures: string[];
 };
@@ -238,146 +140,26 @@ export const RANGE_FEATURES = {
   },
 } as const;
 
-const DEFAULT_UNIT_CONVERSIONS: UnitConversions = {
-  // = 100vw
-  widthPx: 1920,
-  // = 100vh
-  heightPx: 1080,
-  // used to determine vi and vb
-  writingMode: "horizontal-tb",
-  // also used for rem
-  emPx: 16,
-  // also used for rlh
-  lhPx: 16,
-  // font-specific sizes
-  exPx: 8,
-  chPx: 8,
-  capPx: 11,
-  icPx: 16,
-};
-
-export const convertToStandardUnit = (
-  token: NumberToken | DimensionToken | RatioToken | IdentToken,
-  unitConversions: CompiledUnitConversions
-): StandardUnit => {
-  if (token.type === "<number-token>") {
-    return {
-      type: "number",
-      value: token.value,
-    };
-  } else if (token.type === "<dimension-token>") {
-    let unitType: "length" | "time" | "frequency" | "resolution";
-    switch (token.unit) {
-      case "s":
-      case "ms":
-        unitType = "time";
-        break;
-      case "hz":
-      case "khz":
-        unitType = "frequency";
-        break;
-      case "dpi":
-      case "dpcm":
-      case "dppx":
-      case "x":
-        unitType = "resolution";
-        break;
-      default:
-        unitType = "length";
-    }
-
-    if (token.unit === "px") {
-      return {
-        type: "dimension",
-        subtype: "length",
-        px: token.value,
-      };
-    } else if (unitType === "time") {
-      return {
-        type: "dimension",
-        subtype: "time",
-        ms: token.unit === "s" ? Math.round(token.value * 1000) : token.value,
-      };
-    } else if (unitType === "frequency") {
-      return {
-        type: "dimension",
-        subtype: "frequency",
-        hz: token.unit === "khz" ? Math.round(token.value * 1000) : token.value,
-      };
-    } else if (unitType === "resolution") {
-      let dppx = token.value;
-      if (token.unit === "dpi") {
-        dppx = parseFloat((token.value * 0.0104166667).toFixed(3));
-      } else if (token.unit === "dpcm") {
-        dppx = parseFloat((token.value * 0.0264583333).toFixed(3));
-      }
-      return {
-        type: "dimension",
-        subtype: "resolution",
-        dppx,
-      };
-    } else {
-      if (token.unit in unitConversions) {
-        const factor =
-          unitConversions[token.unit as keyof CompiledUnitConversions];
-        return {
-          type: "dimension",
-          subtype: "length",
-          px: parseFloat((token.value * factor).toFixed(3)),
-        };
-      } else {
-        return {
-          type: "ident",
-          value: "{invalid}",
-        };
-      }
-    }
-  } else if (token.type === "<ident-token>") {
-    if (token.value === "infinite") {
-      return {
-        type: "infinite",
-      };
-    } else {
-      return {
-        type: "ident",
-        value: token.value,
-      };
-    }
-  } else {
-    return {
-      type: "ratio",
-      numerator: token.numerator,
-      denominator: token.denominator,
-    };
-  }
-};
-
-export const andConditionSets = (
-  a: ConditionSets,
-  b: ConditionSets
-): ConditionSets => {
-  const newConditionSets: ConditionSets = [];
+export const andPerms = (a: Perms, b: Perms): Perms => {
+  const newPerms: Perms = [];
   for (const x of a) {
     for (const y of b) {
-      const newConditionSet = mergeConditionSets(x, y);
-      if (Object.keys(newConditionSet).length > 0) {
-        newConditionSets.push(newConditionSet);
+      const newPerm = mergePerms(x, y);
+      if (Object.keys(newPerm).length > 0) {
+        newPerms.push(newPerm);
       }
     }
   }
-  return newConditionSets;
+  return newPerms;
 };
 
-export const mergeConditionSets = (
-  setA: ConditionSet,
-  setB: ConditionSet
-): ConditionSet => {
-  const output: ConditionSet = { ...setA };
+export const mergePerms = (setA: Perm, setB: Perm): Perm => {
+  const output: Perm = { ...setA };
   for (const k in setB) {
-    const key = k as keyof FullConditionSet;
+    const key = k as keyof FullPerm;
     if (key in output) {
-      const A = output as FullConditionSet;
-      const B = setB as FullConditionSet;
+      const A = output as FullPerm;
+      const B = setB as FullPerm;
       // in both, merge
       if (key === "media-type") {
         A[key] = B[key];
@@ -392,8 +174,8 @@ export const mergeConditionSets = (
       } else if (setB[key] === "{true}") {
         // nothing, A[key] doesn't change
       } else {
-        const A = output as FullFeatureSet;
-        const B = setB as FullFeatureSet;
+        const A = output as any;
+        const B = setB as any;
         if (
           key === "any-hover" ||
           key === "any-pointer" ||
@@ -455,22 +237,20 @@ export const mergeConditionSets = (
   return output;
 };
 
-export const notConditionSets = (
-  conditionSets: ConditionSets
-): ConditionSets => {
+export const notPerms = (conditionSets: Perms): Perms => {
   // !(a || b) = !a && !b
   return conditionSets
-    .map((conditionSet) => invertConditionSet(conditionSet))
-    .reduce((a: ConditionSets, b: ConditionSets) => andConditionSets(a, b));
+    .map((conditionSet) => invertPerm(conditionSet))
+    .reduce((a: Perms, b: Perms) => andPerms(a, b));
 };
 
-export const invertConditionSet = (set: ConditionSet): ConditionSets => {
+export const invertPerm = (set: Perm): Perms => {
   log("invert");
   log(set);
   if (Object.keys(set).length === 0) {
     return [];
   } else {
-    let outputSets: ConditionSets = [{}];
+    let outputSets: Perms = [{}];
     for (const k in set) {
       const key = k as keyof typeof set;
       if (key === "invalid-features") {
@@ -497,7 +277,7 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
         }));
       } else if (key in DISCRETE_FEATURES) {
         const dKey = key as keyof typeof DISCRETE_FEATURES;
-        const dSet = set as FullFeatureSet;
+        const dSet = set as any;
         if (dKey === "color-gamut") {
           const prevGamutRange = dSet["color-gamut"];
           outputSets = outputSets.map((set) => ({
@@ -519,7 +299,7 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
           const values = Object.keys(DISCRETE_FEATURES[dKey]);
           const before = dSet[dKey];
           outputSets = outputSets.flatMap((prevSet) =>
-            values.reduce((sets: ConditionSets, next) => {
+            values.reduce((sets: Perms, next) => {
               if (next !== before) {
                 sets.push({
                   ...prevSet,
@@ -532,7 +312,7 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
         }
       } else if (key in RANGE_FEATURES) {
         if (key === "aspect-ratio" || key === "device-aspect-ratio") {
-          const rSet = set as FullFeatureSet;
+          const rSet = set as any;
           const [minInclusive, n, x, maxInclusive] = rSet[key];
           const min = n[0] / n[1];
           const max = x[0] / x[1];
@@ -572,7 +352,7 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
             typeof RANGE_FEATURES,
             "aspect-ratio" | "device-aspect-ratio"
           >;
-          const rSet = set as FullFeatureSet;
+          const rSet = set as any;
           const [minInclusive, min, max, maxInclusive] = rSet[rKey];
           const isMinBounded = min !== -Infinity || !minInclusive;
           const isMaxBounded = max !== Infinity || !maxInclusive;
@@ -612,19 +392,19 @@ export const invertConditionSet = (set: ConditionSet): ConditionSets => {
   }
 };
 
-export const mediaFeatureToConditionSets = (
+export const mediaFeatureToPerms = (
   mediaFeature: MediaFeature,
   unitConversions: CompiledUnitConversions
-): ConditionSets | string => {
-  let minValue: StandardUnit | null = null;
+): Perms | string => {
+  let minValue: Unit | null = null;
   let minInclusive = true;
-  let maxValue: StandardUnit | null = null;
+  let maxValue: Unit | null = null;
   let maxInclusive = true;
 
   if (mediaFeature.context === "range") {
     if (mediaFeature.range.leftToken !== null) {
       const { leftToken, leftOp } = mediaFeature.range;
-      const value = convertToStandardUnit(leftToken, unitConversions);
+      const value = convertToUnit(leftToken, unitConversions);
       if (leftOp === "<" || leftOp === "<=") {
         minValue = value;
         minInclusive = leftOp === "<=";
@@ -640,7 +420,7 @@ export const mediaFeatureToConditionSets = (
     }
     if (mediaFeature.range.rightToken !== null) {
       const { rightToken, rightOp } = mediaFeature.range;
-      const value = convertToStandardUnit(rightToken, unitConversions);
+      const value = convertToUnit(rightToken, unitConversions);
       if (rightOp === "<" || rightOp === "<=") {
         maxValue = value;
         maxInclusive = rightOp === "<=";
@@ -655,7 +435,7 @@ export const mediaFeatureToConditionSets = (
       }
     }
   } else if (mediaFeature.context === "value") {
-    const value = convertToStandardUnit(mediaFeature.value, unitConversions);
+    const value = convertToUnit(mediaFeature.value, unitConversions);
     if (mediaFeature.prefix === "min") {
       minValue = value;
       minInclusive = true;
@@ -679,7 +459,7 @@ export const mediaFeatureToConditionSets = (
   }
 
   if (mediaFeature.context === "boolean") {
-    const feature = mediaFeature.feature as keyof FullFeatureSet;
+    const feature = mediaFeature.feature as keyof any;
     if (mediaFeature.feature === "orientation") {
       return [{}];
     } else if (feature === "color-gamut") {
@@ -705,7 +485,7 @@ export const mediaFeatureToConditionSets = (
       feature === "scan" ||
       feature === "update"
     ) {
-      return invertConditionSet({
+      return invertPerm({
         [feature]: "none",
       });
     } else if (
@@ -1105,14 +885,14 @@ export const mediaFeatureToConditionSets = (
   }
 };
 
-export const mediaConditionToConditionSets = (
+export const mediaConditionToPerms = (
   mediaCondition: MediaCondition,
   unitConversions: CompiledUnitConversions
-): ConditionSets => {
-  const conditionSetsSets: ConditionSet[][] = [];
+): Perms => {
+  const conditionSetsSets: Perm[][] = [];
   for (const child of mediaCondition.children) {
     if ("context" in child) {
-      const result = mediaFeatureToConditionSets(child, unitConversions);
+      const result = mediaFeatureToPerms(child, unitConversions);
       if (typeof result === "string") {
         conditionSetsSets.push([
           {
@@ -1123,25 +903,21 @@ export const mediaConditionToConditionSets = (
         conditionSetsSets.push(result);
       }
     } else {
-      conditionSetsSets.push(
-        mediaConditionToConditionSets(child, unitConversions)
-      );
+      conditionSetsSets.push(mediaConditionToPerms(child, unitConversions));
     }
   }
   if (mediaCondition.operator === "or" || mediaCondition.operator === null) {
     return conditionSetsSets.flat();
   } else if (mediaCondition.operator === "and") {
-    return conditionSetsSets.reduce((a, b) => andConditionSets(a, b));
+    return conditionSetsSets.reduce((a, b) => andPerms(a, b));
   } else {
     // "not"
-    return notConditionSets(conditionSetsSets[0]);
+    return notPerms(conditionSetsSets[0]);
   }
 };
 
-export const simplifyConditionSets = (
-  conditionSets: ConditionSets
-): EvaluateResult => {
-  const permutations: SimplifiedPermutation[] = [];
+export const simplifyPerms = (conditionSets: Perms): EvaluateResult => {
+  const simplePerms: SimplePerm[] = [];
   const invalidFeatures = new Set<string>();
   const falseFeatures = new Set<string>();
 
@@ -1157,10 +933,10 @@ export const simplifyConditionSets = (
       isUnmatchable = true;
     }
 
-    const permutation: SimplifiedPermutation = {};
+    const simplePerm: SimplePerm = {};
     for (const k in conditionSet) {
-      const set = conditionSet as FullConditionSet;
-      const key = k as keyof FullConditionSet;
+      const set = conditionSet as FullPerm;
+      const key = k as keyof FullPerm;
       if (key === "invalid-features") {
         continue;
       } else {
@@ -1221,21 +997,11 @@ export const simplifyConditionSets = (
                 } else if (isMinLTELowerBound && isMaxGTEUpperBound) {
                   // {always}
                 } else if (isMinLTELowerBound) {
-                  permutation[key] = [
-                    lbInclusive,
-                    lb,
-                    max,
-                    maxInclusive,
-                  ] as any;
+                  simplePerm[key] = [lbInclusive, lb, max, maxInclusive] as any;
                 } else if (isMaxGTEUpperBound) {
-                  permutation[key] = [
-                    minInclusive,
-                    min,
-                    ub,
-                    ubInclusive,
-                  ] as any;
+                  simplePerm[key] = [minInclusive, min, ub, ubInclusive] as any;
                 } else {
-                  permutation[key] = [
+                  simplePerm[key] = [
                     minInclusive,
                     min,
                     max,
@@ -1247,7 +1013,7 @@ export const simplifyConditionSets = (
                 isUnmatchable = true;
               }
             } else {
-              permutation[key] = value as any;
+              simplePerm[key] = value as any;
             }
           }
         }
@@ -1255,76 +1021,14 @@ export const simplifyConditionSets = (
     }
 
     if (!isUnmatchable) {
-      permutations.push(permutation);
+      simplePerms.push(simplePerm);
     }
   }
 
   return {
-    permutations,
+    simplePerms,
     invalidFeatures: [...invalidFeatures].sort(),
     falseFeatures: [...falseFeatures].sort(),
-  };
-};
-
-const generateUnitConversions = (
-  units: Partial<UnitConversions>
-): CompiledUnitConversions => {
-  // increasing emPx should also increase other units,
-  // but any units passed in override these defaults
-  let impliedUnits: Partial<
-    Pick<UnitConversions, "exPx" | "chPx" | "capPx" | "icPx">
-  > = {};
-  if (typeof units.emPx === "number") {
-    impliedUnits = {
-      exPx: Math.round(units.emPx * 0.5),
-      chPx: Math.round(units.emPx * 0.5),
-      capPx: Math.round(units.emPx * 0.7),
-      icPx: Math.round(units.emPx),
-    };
-  }
-  const mergedUnits = {
-    ...DEFAULT_UNIT_CONVERSIONS,
-    ...impliedUnits,
-    ...units,
-  };
-  const {
-    widthPx,
-    heightPx,
-    writingMode,
-    emPx: em,
-    lhPx: lh,
-    exPx: ex,
-    chPx: ch,
-    capPx: cap,
-    icPx: ic,
-  } = mergedUnits;
-  const vw = widthPx / 100;
-  const vh = heightPx / 100;
-  const vmin = Math.min(vh, vw);
-  const vmax = Math.max(vh, vw);
-  const vi = writingMode === "horizontal-tb" ? vw : vh;
-  const vb = writingMode === "horizontal-tb" ? vh : vw;
-  return {
-    em,
-    rem: em,
-    lh,
-    rlh: lh,
-    ex,
-    ch,
-    cap,
-    ic,
-    vw,
-    vh,
-    vmin,
-    vmax,
-    vi,
-    vb,
-    cm: 37.79527559,
-    mm: 0.03779527559,
-    in: 96,
-    q: 0.009448818898,
-    pc: 16,
-    pt: 16,
   };
 };
 
@@ -1332,12 +1036,12 @@ export const compileAST = (
   ast: AST,
   units: Partial<UnitConversions> = {}
 ): EvaluateResult => {
-  const unitConversions = generateUnitConversions(units);
+  const unitConversions = compileStaticUnitConversions(units);
 
-  const allConditions: ConditionSets = [];
+  const allConditions: Perms = [];
 
   for (const mediaQuery of ast) {
-    const extraConditions: ConditionSets = [];
+    const extraConditions: Perms = [];
     if (mediaQuery.mediaPrefix === "not") {
       if (mediaQuery.mediaType === "print") {
         extraConditions.push({
@@ -1351,11 +1055,8 @@ export const compileAST = (
 
       if (mediaQuery.mediaCondition !== null) {
         extraConditions.push(
-          ...notConditionSets(
-            mediaConditionToConditionSets(
-              mediaQuery.mediaCondition,
-              unitConversions
-            )
+          ...notPerms(
+            mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions)
           ).map((conditionSet) => {
             if (mediaQuery.mediaType === "all") {
               return conditionSet;
@@ -1369,14 +1070,14 @@ export const compileAST = (
         );
       }
     } else {
-      const mediaType: FullConditionSet["media-type"] = mediaQuery.mediaType;
+      const mediaType: FullPerm["media-type"] = mediaQuery.mediaType;
       if (mediaQuery.mediaCondition === null) {
         extraConditions.push({
           "media-type": mediaType,
         });
       } else {
         extraConditions.push(
-          ...mediaConditionToConditionSets(
+          ...mediaConditionToPerms(
             mediaQuery.mediaCondition,
             unitConversions
           ).map((conditionSet) => ({
@@ -1396,7 +1097,7 @@ export const compileAST = (
     }
   }
 
-  return simplifyConditionSets(allConditions);
+  return simplifyPerms(allConditions);
 };
 
 export const compileQuery = (

@@ -159,11 +159,11 @@ export const matches = (
   };
   validateEnv(env);
 
-  for (const permutation of compiledQuery.permutations) {
+  for (const simplePerm of compiledQuery.simplePerms) {
     let matches = true;
-    for (const key in permutation) {
-      const k = key as keyof typeof permutation;
-      const p = permutation as Required<typeof permutation>;
+    for (const key in simplePerm) {
+      const k = key as keyof typeof simplePerm;
+      const p = simplePerm as Required<typeof simplePerm>;
       if (k === "media-type") {
         const v = p[k];
         if (v === "print") {

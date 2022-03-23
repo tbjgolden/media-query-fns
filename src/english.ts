@@ -1,18 +1,13 @@
-import {
-  EvaluateResult,
-  FullFeatureSet,
-  SimplifiedPermutation,
-  RANGE_FEATURES,
-} from "./compile";
+import { EvaluateResult, SimplePerm, RANGE_FEATURES } from "./compile";
 
 type Values<T> = T[keyof T];
 type KVPairs<T> = Values<{
   [Property in keyof T]: [Property, T[Property]];
 }>;
 
-type FeaturePair = KVPairs<Required<SimplifiedPermutation>>;
+type FeaturePair = KVPairs<Required<SimplePerm>>;
 
-const SORT_ORDER: Record<keyof FullFeatureSet | "media-type", number> = {
+const SORT_ORDER: Record<keyof SimplePerm, number> = {
   "media-type": 0,
   width: 1,
   height: 2,
@@ -716,13 +711,13 @@ export const featurePairToEnglishQuerySegments = (
 };
 
 export const toEnglishData = (result: EvaluateResult): HumanFriendlyData => {
-  const featurePairLists: FeaturePair[][] = result.permutations.map(
-    (permutation) => {
+  const featurePairLists: FeaturePair[][] = result.simplePerms.map(
+    (simplePerm) => {
       const list: FeaturePair[] = [];
-      for (const key in permutation) {
-        const k = key as keyof typeof permutation;
+      for (const key in simplePerm) {
+        const k = key as keyof typeof simplePerm;
         const index = SORT_ORDER[k];
-        list[index] = [k, permutation[k]] as FeaturePair;
+        list[index] = [k, simplePerm[k]] as FeaturePair;
       }
       return list.filter(Boolean);
     }
