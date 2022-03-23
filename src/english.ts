@@ -43,6 +43,7 @@ type QuerySegment = {
     | "always" // for empty lists
     | "dimension"
     | "number"
+    | "ratio"
     | "bool-op"
     | "comparison"
     | "plain"
@@ -55,6 +56,15 @@ export type HumanFriendlyData = {
   querySegmentLists: QuerySegment[][];
   invalidFeatures: EvaluateResult["invalidFeatures"];
   neverFeatures: EvaluateResult["neverFeatures"];
+};
+
+const gcd = (large: number, small: number): number => {
+  return small === 0 ? large : gcd(small, large % small);
+};
+const simplify = (a: number, b: number): [number, number] => {
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return [a, b];
+  const divisor = gcd(a > b ? a : b, a > b ? b : a);
+  return [a / divisor, b / divisor];
 };
 
 const to5dp = (n: number) => parseFloat(n.toFixed(5));
@@ -527,14 +537,38 @@ export const featurePairToEnglishQuerySegments = (
       max < maxBounds ||
       (max === maxBounds && maxBoundsInclusive > maxInclusive);
 
-    const minDim: QuerySegment = {
-      type: "number",
-      value: `${to5dp(min)}`,
-    };
+    const prefix = p[0] === "aspect-ratio" ? "is" : "device is";
 
+    if (min === 1 && max === 1 && minInclusive && maxInclusive) {
+      return [
+        {
+          type: "plain",
+          value: `${prefix} square`,
+        },
+      ];
+    } else if (min === 1 && !upperBounded) {
+      return [
+        {
+          type: "plain",
+          value: `${prefix} landscape${minInclusive ? " or square" : ""}`,
+        },
+      ];
+    } else if (max === 1 && !lowerBounded) {
+      return [
+        {
+          type: "plain",
+          value: `${prefix} portrait${minInclusive ? " or square" : ""}`,
+        },
+      ];
+    }
+
+    const minDim: QuerySegment = {
+      type: "ratio",
+      value: `${simplify(to5dp(n[0]), to5dp(n[1])).join(":")}`,
+    };
     const maxDim: QuerySegment = {
-      type: "number",
-      value: `${to5dp(max)}`,
+      type: "ratio",
+      value: `${simplify(to5dp(x[0]), to5dp(x[1])).join(":")}`,
     };
 
     const segments: QuerySegment[] = [];

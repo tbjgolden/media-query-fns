@@ -428,3 +428,27 @@ test("matches others", () => {
     check("@media not screen and ((not (update: none)) and (monochrome))")
   ).not.toThrow();
 });
+
+test("found bugs", () => {
+  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
+    const compiled = compileQuery(query);
+    // console.log(
+    //   util.inspect(compiled, {
+    //     depth: 10,
+    //     colors: true,
+    //   })
+    // );
+    return matches(compiled, {
+      ...DEFAULT_DIMENSIONS,
+      ...diffs,
+    });
+  };
+
+  expect(
+    check("not screen and (min-width: 1000px) and (orientation: landscape)", {
+      mediaType: "screen",
+      widthPx: 900,
+      heightPx: 500,
+    })
+  ).toBe(true);
+});

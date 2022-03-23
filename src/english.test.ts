@@ -1,5 +1,13 @@
 import { compileQuery } from "./compile";
 import { toEnglishData, toEnglishString } from "./english";
+import util from "util";
+const log = (x: any) =>
+  console.log(
+    util.inspect(x, {
+      depth: 10,
+      colors: true,
+    })
+  );
 
 test("toEnglishData", () => {
   expect(toEnglishData(compileQuery("(min-width: 120px)"))).toEqual({
@@ -25,14 +33,19 @@ test("toEnglishData", () => {
 });
 
 test("toEnglishString", () => {
+  log(
+    compileQuery(
+      "not screen and (min-width: 1000px) and (orientation: landscape)"
+    )
+  );
   expect(
     toEnglishString(
       compileQuery(
-        "not screen and (min-width: 1000px) and (orientation: landscape)"
+        "not screen and (min-width: 1000px) and (min-aspect-ratio: 2)"
       )
     )
   ).toEqual(
-    "if not a screen OR (is screen AND width < 1000px AND aspect-ratio < 1)"
+    "if not a screen OR (is screen AND width < 1000px AND is portrait)"
   );
   expect(toEnglishString(compileQuery("(min-width: 120px)"))).toEqual(
     "if 120px ≤ width"
@@ -206,9 +219,9 @@ test("toEnglishString", () => {
     "never"
   );
   // TODO: improve this formatting
-  // expect(
-  //   toEnglishString(compileQuery("@media (orientation: landscape)"))
-  // ).toEqual("");
+  expect(
+    toEnglishString(compileQuery("@media (orientation: landscape)"))
+  ).toEqual("");
   // expect(
   //   toEnglishString(compileQuery("@media (orientation: portrait)"))
   // ).toEqual("");
