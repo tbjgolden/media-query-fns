@@ -45,7 +45,7 @@ test("toEnglishString", () => {
       )
     )
   ).toEqual(
-    "if not a screen OR (is screen AND width < 1000px AND is portrait)"
+    "if not a screen OR (is screen AND width < 1000px AND is landscape or square) OR (is screen AND 1000px ≤ width AND is portrait)"
   );
   expect(toEnglishString(compileQuery("(min-width: 120px)"))).toEqual(
     "if 120px ≤ width"

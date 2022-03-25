@@ -2,18 +2,21 @@ import { toAST, AST, MediaCondition, MediaFeature } from "media-query-parser";
 import {
   Perm,
   MediaFeatures,
-  log,
   permToConditionPairs,
   hasRangeNumberKey,
   hasRangeRatioKey,
   attachPair,
   andRanges,
-  RANGE_NUMBER_FEATURES,
-  RANGE_RATIO_FEATURES,
   DISCRETE_FEATURES,
   isDiscreteKey,
   isRangeRatioKey,
+  hasRangeKey,
   ConditionRange,
+  hasDiscreteKey,
+  notRatioRange,
+  notNumberRange,
+  ConditionPair,
+  boundRange,
 } from "./helpers";
 import {
   CompiledUnitConversions,
@@ -36,11 +39,11 @@ export type EvaluateResult = {
   falseFeatures: string[];
 };
 
-export const andPerms = (a: Perm[], b: Perm[]): Perm[] => {
+export const andPerms = (as: Perm[], bs: Perm[]): Perm[] => {
   const newPerms: Perm[] = [];
-  for (const x of a) {
-    for (const y of b) {
-      const newPerm = mergePerms(x, y);
+  for (const a of as) {
+    for (const b of bs) {
+      const newPerm = mergePerms(a, b);
       if (Object.keys(newPerm).length > 0) {
         newPerms.push(newPerm);
       }
@@ -49,59 +52,69 @@ export const andPerms = (a: Perm[], b: Perm[]): Perm[] => {
   return newPerms;
 };
 
-export const mergePerms = (setA: Perm, setB: Perm): Perm => {
-  const output: Perm = { ...setA };
-  for (const k in setB) {
-    const key = k;
-    if (key in output) {
-      const A = output;
-      const B = setB;
-      // in both, merge
-      if (key === "media-type") {
-        A[key] = B[key];
-      } else if (key === "invalid-features") {
-        A[key].push(...B[key]);
-      } else if (output[key] === "{invalid}" || setB[key] === "{invalid}") {
-        A[key] = "{invalid}";
-      } else if (output[key] === "{false}" || setB[key] === "{false}") {
-        A[key] = "{false}";
-      } else if (output[key] === "{true}") {
-        A[key] = B[key];
-      } else if (setB[key] === "{true}") {
-        // nothing, A[key] doesn't change
-      } else {
-        const A = output;
-        const B = setB;
-        if (
-          key === "any-hover" ||
-          key === "any-pointer" ||
-          key === "overflow-block" ||
-          key === "overflow-inline" ||
-          key === "hover" ||
-          key === "grid" ||
-          key === "scan" ||
-          key === "pointer" ||
-          key === "update"
-        ) {
-          // this is type safe, but ts can't work it out
-          A[key] = A[key] === B[key] ? A[key] : "{false}";
-        } else if (key === "color-gamut") {
-          A[key] = [
-            A[key][0] && B[key][0],
-            A[key][1] && B[key][1],
-            A[key][2] && B[key][2],
-            A[key][3] && B[key][3],
-          ];
+export const mergePerms = (a: Perm, b: Perm): Perm => {
+  const merged: Perm = {};
+
+  for (const p of permToConditionPairs(a)) {
+    if (p[1] !== undefined) {
+      attachPair(merged, p);
+    }
+  }
+
+  for (const p of permToConditionPairs(b)) {
+    if (p[0] in merged) {
+      if (merged[p[0]] !== undefined) {
+        // q is type safe from the above checks
+        const q = merged as Required<Perm>;
+
+        // in both, merge
+        if (p[0] === "media-type") {
+          // this function doesn't merge media-types
+        } else if (p[0] === "invalid-features") {
+          q[p[0]].push(...p[1]);
+        } else if (q[p[0]] === "{false}" || p[1] === "{false}") {
+          q[p[0]] = "{false}";
+        } else if (q[p[0]] === "{true}") {
+          attachPair(q, p);
+        } else if (p[1] === "{true}") {
+          // nothing, q[p[0]] doesn't change
         } else {
-          A[key] = andRanges(A[key], B[key]);
+          // qq is type safe from the above checks
+          const qq = merged as MediaFeatures;
+          if (hasRangeNumberKey(p)) {
+            attachPair(qq, [p[0], andRanges(qq[p[0]], p[1])]);
+          } else if (hasRangeRatioKey(p)) {
+            attachPair(qq, [p[0], andRanges(qq[p[0]], p[1])]);
+          } else if (p[0] === "color-gamut") {
+            qq[p[0]] = [
+              qq[p[0]][0] && p[1][0],
+              qq[p[0]][1] && p[1][1],
+              qq[p[0]][2] && p[1][2],
+              qq[p[0]][3] && p[1][3],
+            ];
+          } else if (p[0] === "any-hover" || p[0] === "hover") {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          } else if (p[0] === "any-pointer" || p[0] === "pointer") {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          } else if (p[0] === "grid") {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          } else if (p[0] === "overflow-block") {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          } else if (p[0] === "overflow-inline") {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          } else if (p[0] === "scan") {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          } else {
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+          }
         }
       }
     } else {
-      // this is type safe, but ts can't work it out
-      output[key] = setB[key];
+      attachPair(merged, p);
     }
   }
-  return output;
+
+  return merged;
 };
 
 export const notPerms = (conditionSets: Perm[]): Perm[] => {
@@ -112,148 +125,62 @@ export const notPerms = (conditionSets: Perm[]): Perm[] => {
 };
 
 export const invertPerm = (set: Perm): Perm[] => {
-  log("invert");
-  log(set);
-  if (Object.keys(set).length === 0) {
-    return [];
-  } else {
-    let outputSets: Perm[] = [{}];
-    for (const k in set) {
-      const key = k;
-      if (key === "invalid-features") {
-        outputSets = outputSets.map((prevSet) => ({
-          ...prevSet,
-          "invalid-features": set[key],
-        }));
-      } else if (key === "media-type") {
-        // ignore
-      } else if (set[key] === "{invalid}") {
-        outputSets = outputSets.map((prevSet) => ({
-          ...prevSet,
-          [key]: "{invalid}",
-        }));
-      } else if (set[key] === "{false}") {
-        outputSets = outputSets.map((prevSet) => ({
-          ...prevSet,
-          [key]: "{true}",
-        }));
-      } else if (set[key] === "{true}") {
-        outputSets = outputSets.map((prevSet) => ({
-          ...prevSet,
-          [key]: "{false}",
-        }));
-      } else if (key in DISCRETE_FEATURES) {
-        const dKey = key;
-        const dSet = set;
-        if (dKey === "color-gamut") {
-          const prevGamutRange = dSet["color-gamut"];
-          outputSets = outputSets.map((set) => ({
-            ...set,
-            "color-gamut": [
-              !prevGamutRange[0],
-              !prevGamutRange[1],
-              !prevGamutRange[2],
-              !prevGamutRange[3],
-            ],
-          }));
-        } else if (dKey === "grid") {
-          const before = dSet[dKey];
-          outputSets = outputSets.map((prevSet) => ({
-            ...prevSet,
-            grid: before === 0 ? 1 : 0,
-          }));
-        } else {
-          const values = Object.keys(DISCRETE_FEATURES[dKey]);
-          const before = dSet[dKey];
-          outputSets = outputSets.flatMap((prevSet) =>
-            values.reduce((sets: Perm[], next) => {
-              if (next !== before) {
-                sets.push({
-                  ...prevSet,
-                  [dKey]: next,
-                });
-              }
-              return sets;
-            }, [])
-          );
-        }
-      } else if (key in RANGE_FEATURES) {
-        if (key === "aspect-ratio" || key === "device-aspect-ratio") {
-          const rSet = set;
-          const [minInclusive, n, x, maxInclusive] = rSet[key];
-          const min = n[0] / n[1];
-          const max = x[0] / x[1];
-          const isMinBounded = min !== -Infinity || !minInclusive;
-          const isMaxBounded = max !== Infinity || !maxInclusive;
-          if (isMinBounded && isMaxBounded) {
-            outputSets = outputSets.flatMap((set) => [
-              {
-                ...set,
-                [key]: [true, [-Infinity, 1], n, !minInclusive],
-              },
-              {
-                ...set,
-                [key]: [!maxInclusive, x, [Infinity, 1], true],
-              },
-            ]);
-          } else if (!isMinBounded && !isMaxBounded) {
-            outputSets = outputSets.map((set) => ({
-              ...set,
-              [key]: "{false}",
-            }));
+  // !(a && b && c) = !a || !b || !c
+  const pairs = permToConditionPairs(set);
+  const combinations: [ConditionPair, ConditionPair[]][] = [];
+  for (const p of pairs) {
+    if (p[1] !== undefined) {
+      let condition: ConditionPair;
+      let notConditions: ConditionPair[];
+      if (p[0] === "invalid-features") {
+        return [{ [p[0]]: p[1] }];
+      } else if (p[0] === "media-type") {
+        continue;
+      } else {
+        condition = p;
+        if (p[1] === "{false}") {
+          notConditions = [[p[0], "{true}"]];
+        } else if (p[1] === "{true}") {
+          notConditions = [[p[0], "{false}"]];
+        } else if (hasDiscreteKey(p)) {
+          if (p[0] === "color-gamut") {
+            const c = p[1];
+            notConditions = [["color-gamut", [!c[0], !c[1], !c[2], !c[3]]]];
+          } else if (p[0] === "grid") {
+            notConditions = [["grid", p[1] === 0 ? 1 : 0]];
           } else {
-            if (isMinBounded) {
-              outputSets = outputSets.map((set) => ({
-                ...set,
-                [key]: [true, [-Infinity, 1], n, !minInclusive],
-              }));
-            } else {
-              outputSets = outputSets.map((set) => ({
-                ...set,
-                [key]: [!maxInclusive, x, [Infinity, 1], true],
-              }));
-            }
+            notConditions = Object.keys(DISCRETE_FEATURES[p[0]]).map(
+              (value) => [p[0], value] as ConditionPair
+            );
           }
+        } else if (hasRangeRatioKey(p)) {
+          const r = notRatioRange(p);
+          const ranges = r === "{false}" ? (["{false}"] as const) : r;
+          notConditions = ranges.map((range) => [p[0], range]);
         } else {
-          const rKey = key;
-          const rSet = set;
-          const [minInclusive, min, max, maxInclusive] = rSet[rKey];
-          const isMinBounded = min !== -Infinity || !minInclusive;
-          const isMaxBounded = max !== Infinity || !maxInclusive;
-          if (isMinBounded && isMaxBounded) {
-            outputSets = outputSets.flatMap((set) => [
-              {
-                ...set,
-                [rKey]: [true, -Infinity, min, !minInclusive],
-              },
-              {
-                ...set,
-                [rKey]: [!maxInclusive, max, Infinity, true],
-              },
-            ]);
-          } else if (!isMinBounded && !isMaxBounded) {
-            outputSets = outputSets.map((set) => ({
-              ...set,
-              [rKey]: "{false}",
-            }));
-          } else {
-            if (isMinBounded) {
-              outputSets = outputSets.map((set) => ({
-                ...set,
-                [rKey]: [true, -Infinity, min, !minInclusive],
-              }));
-            } else {
-              outputSets = outputSets.map((set) => ({
-                ...set,
-                [rKey]: [!maxInclusive, max, Infinity, true],
-              }));
-            }
-          }
+          const r = notNumberRange(p);
+          const ranges = r === "{false}" ? (["{false}"] as const) : r;
+          notConditions = ranges.map((range) => [p[0], range]);
         }
       }
+      combinations.push([condition, notConditions]);
     }
-    return outputSets;
   }
+
+  const invertedPerms: Perm[] = [];
+  for (let i = 0; i < combinations.length; i++) {
+    for (const notCondition of combinations[i][1]) {
+      const perm: Perm = {};
+      attachPair(perm, notCondition);
+      for (let j = 0; j < combinations.length; j++) {
+        if (i !== j) {
+          attachPair(perm, combinations[j][0]);
+        }
+      }
+      invertedPerms.push(perm);
+    }
+  }
+  return invertedPerms;
 };
 
 export const mediaFeatureToPerms = (
@@ -302,25 +229,28 @@ export const mediaFeatureToPerms = (
     }
     return INVALID;
   } else if (isRangeRatioKey(feature.name)) {
-    let bounds: ConditionRange<readonly [number, number]> | null = null;
+    let range: ConditionRange<readonly [number, number]> | null = null;
 
     if (feature.type === "equals") {
       const ratio = getRatio(feature.value);
-      if (ratio !== null) bounds = [true, ratio, ratio, true];
+      if (ratio !== null) {
+        range = [true, ratio, ratio, true];
+      }
     } else if (feature.type === "single") {
       const ratio = getRatio(feature.value);
       if (ratio !== null) {
-        if (feature.op === "<") bounds = [false, [0, 1], ratio, false];
-        else if (feature.op === "<=") bounds = [false, [0, 1], ratio, true];
+        if (feature.op === "<") range = [true, [-Infinity, 1], ratio, false];
+        else if (feature.op === "<=")
+          range = [true, [-Infinity, 1], ratio, true];
         else if (feature.op === ">")
-          bounds = [false, ratio, [Infinity, 1], false];
-        else bounds = [true, ratio, [Infinity, 1], false];
+          range = [false, ratio, [Infinity, 1], true];
+        else range = [true, ratio, [Infinity, 1], true];
       }
     } else if (feature.type === "double") {
       const minRatio = getRatio(feature.min);
       const maxRatio = getRatio(feature.max);
       if (minRatio !== null && maxRatio !== null) {
-        bounds = [
+        range = [
           feature.minOp === "<=",
           minRatio,
           maxRatio,
@@ -329,26 +259,28 @@ export const mediaFeatureToPerms = (
       }
     }
 
-    return bounds === null ? INVALID : [{ [feature.name]: bounds }];
+    return range === null
+      ? INVALID
+      : [{ [feature.name]: boundRange([feature.name, range]) }];
   } else {
-    let bounds: ConditionRange | null = null;
+    let range: ConditionRange | null = null;
 
     if (feature.type === "equals") {
       const value = getValue(feature.value, feature.name);
-      if (value !== null) bounds = [true, value, value, true];
+      if (value !== null) range = [true, value, value, true];
     } else if (feature.type === "single") {
       const value = getValue(feature.value, feature.name);
       if (value !== null) {
-        if (feature.op === "<") bounds = [false, 0, value, false];
-        else if (feature.op === "<=") bounds = [false, 0, value, true];
-        else if (feature.op === ">") bounds = [false, value, Infinity, false];
-        else bounds = [true, value, Infinity, false];
+        if (feature.op === "<") range = [true, -Infinity, value, false];
+        else if (feature.op === "<=") range = [true, -Infinity, value, true];
+        else if (feature.op === ">") range = [false, value, Infinity, true];
+        else range = [true, value, Infinity, true];
       }
     } else if (feature.type === "double") {
       const minValue = getValue(feature.min, feature.name);
       const maxValue = getValue(feature.max, feature.name);
       if (minValue !== null && maxValue !== null) {
-        bounds = [
+        range = [
           feature.minOp === "<=",
           minValue,
           maxValue,
@@ -357,7 +289,9 @@ export const mediaFeatureToPerms = (
       }
     }
 
-    return bounds === null ? INVALID : [{ [feature.name]: bounds }];
+    return range === null
+      ? INVALID
+      : [{ [feature.name]: boundRange([feature.name, range]) }];
   }
 };
 
@@ -414,22 +348,11 @@ export const simplifyPerms = (perms: Perm[]): EvaluateResult => {
           } else if (prev === "true,true,true,true") {
             p[1] = "{true}";
           }
-        } else if (hasRangeNumberKey(p)) {
-          p[1] =
-            p[1] === "{invalid}"
-              ? "{invalid}"
-              : andRanges(p[1], RANGE_NUMBER_FEATURES[p[0]].bounds);
-        } else if (hasRangeRatioKey(p)) {
-          p[1] =
-            p[1] === "{invalid}"
-              ? "{invalid}"
-              : andRanges(p[1], RANGE_RATIO_FEATURES[p[0]].bounds);
+        } else if (hasRangeKey(p)) {
+          p[1] = boundRange(p);
         }
 
-        if (p[1] === "{invalid}") {
-          invalidFeatures.add(p[0]);
-          isUnmatchable = true;
-        } else if (p[1] === "{false}") {
+        if (p[1] === "{false}") {
           falseFeatures.add(p[0]);
           isUnmatchable = true;
         } else if (p[1] === "{true}") {

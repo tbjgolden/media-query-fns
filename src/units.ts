@@ -6,14 +6,12 @@ import {
   MediaFeature,
 } from "media-query-parser";
 import {
-  DISCRETE_FEATURES,
   isFeatureKey,
   isRangeKey,
   MediaFeatures,
   RangeFeatures,
   RangeNumberFeatures,
   RANGE_NUMBER_FEATURES,
-  RANGE_RATIO_FEATURES,
 } from "./helpers";
 
 export type LengthUnit = {
@@ -197,7 +195,7 @@ export const convertToUnit = (
       } else {
         return {
           type: "ident",
-          value: "{invalid}",
+          value: "{never}",
         };
       }
     }
@@ -326,6 +324,7 @@ export const simplifyMediaFeature = (
 
   if (mediaFeature.context === "range") {
     if (isRangeKey(feature)) {
+      const { bounds } = RANGE_NUMBER_FEATURES[feature];
       const { range } = mediaFeature;
       if (range.leftToken !== null && range.rightToken !== null) {
         if (range.leftOp === "<" || range.leftOp === "<=") {
@@ -433,6 +432,23 @@ export const simplifyMediaFeature = (
         }
       }
     }
+  } else if (feature === "orientation") {
+    return {
+      type: "double",
+      name: "aspect-ratio",
+      min: {
+        type: "ratio",
+        numerator: 0,
+        denominator: 1,
+      },
+      minOp: "<",
+      maxOp: "<",
+      max: {
+        type: "ratio",
+        numerator: Infinity,
+        denominator: 1,
+      },
+    };
   } else if (isFeatureKey(feature)) {
     return {
       type: "boolean",

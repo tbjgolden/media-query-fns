@@ -44,7 +44,7 @@ test("handles not queries", () => {
     simplifyPerms([
       {
         "media-type": "all",
-        width: [true, -Infinity, 120, false],
+        width: [true, 0, 120, false],
       },
     ])
   );
@@ -54,7 +54,7 @@ test("handles not queries", () => {
     simplifyPerms([
       {
         "media-type": "all",
-        width: [true, -Infinity, 100, false],
+        width: [true, 0, 100, false],
       },
       {
         "media-type": "all",
@@ -68,7 +68,7 @@ test("handles not queries", () => {
     simplifyPerms([
       {
         "media-type": "screen",
-        width: [true, -Infinity, 100, false],
+        width: [true, 0, 100, false],
       },
       {
         "media-type": "screen",
@@ -85,7 +85,7 @@ test("handles not queries", () => {
       },
       {
         "media-type": "print",
-        width: [true, -Infinity, 100, false],
+        width: [true, 0, 100, false],
       },
       {
         "media-type": "print",
@@ -124,6 +124,11 @@ test("handles not queries", () => {
 });
 
 test("correctly handles weird queries", () => {
+  expect(compileQuery("(fake: feature)")).toEqual({
+    invalidFeatures: ["fake"],
+    falseFeatures: [],
+    simplePerms: [],
+  });
   expect(compileQuery("not (width: infinite)")).toEqual({
     invalidFeatures: ["width"],
     falseFeatures: [],
@@ -154,7 +159,7 @@ test("not operator", () => {
     simplifyPerms([
       {
         "media-type": "all",
-        width: [true, -Infinity, 120, false],
+        width: [true, 0, 120, false],
       },
     ])
   );
@@ -170,7 +175,7 @@ test("not operator", () => {
     simplifyPerms([
       {
         "media-type": "all",
-        width: [true, -Infinity, 110, false],
+        width: [true, 0, 110, false],
       },
       {
         "media-type": "all",
@@ -182,7 +187,7 @@ test("not operator", () => {
     simplifyPerms([
       {
         "media-type": "screen",
-        width: [true, -Infinity, 120, false],
+        width: [true, 0, 120, false],
       },
     ])
   );
@@ -236,44 +241,58 @@ test("custom units", () => {
   );
 });
 
-test.only("found bugs", () => {
+test("found bugs", () => {
   expect(
-    invertPerm({
-      width: [true, 1000, Infinity, true],
-      "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
-    }).sort((a, b) => ((a.width?.[1] ?? 0) > (b.width?.[1] ?? 0) ? 1 : -1))
-  ).toEqual([
-    // {
-    //   "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
-    //   width: [true, -Infinity, 1000, false],
-    // },
-    // {
-    //   "aspect-ratio": [true, -Infinity, [1, 1], false],
-    //   width: [true, 1000, Infinity, true],
-    // },
-  ]);
+    simplifyPerms(
+      invertPerm({
+        width: [true, 1000, Infinity, true],
+        "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
+      })
+    )
+  ).toEqual({
+    falseFeatures: [],
+    invalidFeatures: [],
+    simplePerms: [
+      {
+        "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
+        width: [true, 0, 1000, false],
+      },
+      {
+        "aspect-ratio": [false, [0, 1], [1, 1], false],
+        width: [true, 1000, Infinity, false],
+      },
+    ],
+  });
+
+  expect(compileQuery("(orientation)")).toEqual({
+    falseFeatures: [],
+    invalidFeatures: [],
+    simplePerms: [{}],
+  });
 
   // "not screen and (min-width: 1000px) and (orientation: landscape)"
   // "not (screen and (min-width: 1000px) and (orientation: landscape))"
-  // "(not-screen or (screen and width < 1000px) or (screen and aspect-ratio < 1/1))"
+  // "(not-screen or (screen and width < 1000px and landscape) or (screen and aspect-ratio < 1/1))"
   expect(
     compileQuery(
       "not screen and (min-width: 1000px) and (orientation: landscape)"
     )
   ).toEqual({
+    falseFeatures: [],
+    invalidFeatures: [],
     simplePerms: [
       { "media-type": "not-screen" },
       {
-        "aspect-ratio": [false, [0, 1], [1, 1], false],
+        "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
         "media-type": "screen",
+        width: [true, 0, 1000, false],
       },
       {
-        width: [true, 0, 1000, false],
+        "aspect-ratio": [false, [0, 1], [1, 1], false],
         "media-type": "screen",
+        width: [true, 1000, Infinity, false],
       },
     ],
-    invalidFeatures: [],
-    falseFeatures: [],
   });
 
   // "(not ((min-width: 1000px) and (orientation: landscape)))"

@@ -1,4 +1,5 @@
-import { EvaluateResult, SimplePerm, RANGE_FEATURES } from "./compile";
+import { EvaluateResult, SimplePerm } from "./compile";
+import { RANGE_NUMBER_FEATURES, RANGE_RATIO_FEATURES } from "./helpers";
 
 type Values<T> = T[keyof T];
 type KVPairs<T> = Values<{
@@ -440,7 +441,7 @@ export const featurePairToEnglishQuerySegments = (
     p[0] === "resolution"
   ) {
     const [minBoundsInclusive, minBounds, maxBounds, maxBoundsInclusive] =
-      RANGE_FEATURES[p[0]].bounds;
+      RANGE_NUMBER_FEATURES[p[0]].bounds;
     const [minInclusive, min, max, maxInclusive] = p[1];
 
     const lowerBounded =
@@ -457,10 +458,10 @@ export const featurePairToEnglishQuerySegments = (
     if (lowerBounded) {
       minDim.type = "dimension";
       let unit = "px";
-      if (RANGE_FEATURES[p[0]].type === "integer") {
+      if (RANGE_NUMBER_FEATURES[p[0]].type === "integer") {
         minDim.type = "number";
         unit = "";
-      } else if (RANGE_FEATURES[p[0]].type === "resolution") {
+      } else if (RANGE_NUMBER_FEATURES[p[0]].type === "resolution") {
         unit = "x";
       }
       minDim.value = `${to5dp(min)}${unit}`;
@@ -473,10 +474,10 @@ export const featurePairToEnglishQuerySegments = (
     if (upperBounded) {
       maxDim.type = "dimension";
       let unit = "px";
-      if (RANGE_FEATURES[p[0]].type === "integer") {
+      if (RANGE_NUMBER_FEATURES[p[0]].type === "integer") {
         maxDim.type = "number";
         unit = "";
-      } else if (RANGE_FEATURES[p[0]].type === "resolution") {
+      } else if (RANGE_NUMBER_FEATURES[p[0]].type === "resolution") {
         unit = "x";
       }
       maxDim.value = `${to5dp(max)}${unit}`;
@@ -519,7 +520,7 @@ export const featurePairToEnglishQuerySegments = (
     return segments;
   } else if (p[0] === "aspect-ratio" || p[0] === "device-aspect-ratio") {
     const [minBoundsInclusive, nb, xb, maxBoundsInclusive] =
-      RANGE_FEATURES[p[0]].bounds;
+      RANGE_RATIO_FEATURES[p[0]].bounds;
     const minBounds = nb[0] / nb[1];
     const maxBounds = xb[0] / xb[1];
     const [minInclusive, n, x, maxInclusive] = p[1];

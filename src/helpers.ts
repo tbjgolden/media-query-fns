@@ -13,7 +13,7 @@ type KVPairs<T> = Values<{
   [Property in keyof T]: [Property, T[Property]];
 }>;
 export type ConditionRange<T = number> = readonly [boolean, T, T, boolean];
-export type Condition<T> = T | "{false}" | "{true}" | "{invalid}";
+export type Condition<T> = T | "{false}" | "{true}";
 export type Conditional<T> = {
   [Property in keyof T]: Condition<T[Property]>;
 };
@@ -63,11 +63,13 @@ export type Perm = Partial<
     "invalid-features": string[];
   }
 >;
-type ConditionPair = KVPairs<Required<Perm>>;
-type DiscreteConditionPair = KVPairs<Conditional<DiscreteFeatures>>;
-type RangeConditionPair = KVPairs<Conditional<RangeFeatures>>;
-type RangeRatioConditionPair = KVPairs<Conditional<RangeRatioFeatures>>;
-type RangeNumberConditionPair = KVPairs<Conditional<RangeNumberFeatures>>;
+export type ConditionPair = KVPairs<Required<Perm>>;
+export type DiscreteConditionPair = KVPairs<Conditional<DiscreteFeatures>>;
+export type RangeConditionPair = KVPairs<Conditional<RangeFeatures>>;
+export type RangeRatioConditionPair = KVPairs<Conditional<RangeRatioFeatures>>;
+export type RangeNumberConditionPair = KVPairs<
+  Conditional<RangeNumberFeatures>
+>;
 
 export const permToConditionPairs = (perm: Perm): ConditionPair[] => {
   return Object.entries(perm).filter(
@@ -198,7 +200,7 @@ export const attachPair = <T extends object>(
   (obj as any)[pair[0]] = pair[1];
 };
 
-const and2Ranges = <T extends number | readonly [number, number]>(
+const binaryAndRanges = <T extends number | readonly [number, number]>(
   a: ConditionRange<T>,
   b: ConditionRange<T>
 ): ConditionRange<T> | "{false}" => {
@@ -228,6 +230,7 @@ const and2Ranges = <T extends number | readonly [number, number]>(
     return [mergedMinInclusive, mergedMin, mergedMax, mergedMaxInclusive];
   }
 };
+
 export const andRanges = <T extends number | readonly [number, number]>(
   ...ranges: Array<"{true}" | "{false}" | ConditionRange<T>>
 ): "{true}" | "{false}" | ConditionRange<T> =>
@@ -239,6 +242,150 @@ export const andRanges = <T extends number | readonly [number, number]>(
     } else if (a === "{false}" || b === "{false}") {
       return "{false}";
     } else {
-      return and2Ranges(a, b);
+      return binaryAndRanges(a, b);
     }
   }, "{true}");
+
+export const boundRange = <T extends RangeConditionPair>(pair: T): T[1] => {
+  if (hasRangeRatioKey(pair)) {
+    const { bounds } = RANGE_RATIO_FEATURES[pair[0]];
+    const newBounds = andRanges(pair[1], bounds);
+    if (typeof newBounds === "string") {
+      return newBounds;
+    } else if (
+      newBounds[0] === bounds[0] &&
+      newBounds[1][0] === bounds[1][0] &&
+      newBounds[1][1] === bounds[1][1] &&
+      newBounds[2][0] === bounds[2][0] &&
+      newBounds[2][1] === bounds[2][1] &&
+      newBounds[3] === bounds[3]
+    ) {
+      return "{true}";
+    } else {
+      return newBounds;
+    }
+  } else {
+    const { bounds } = RANGE_NUMBER_FEATURES[pair[0]];
+    const newBounds = andRanges(pair[1], bounds);
+    if (typeof newBounds === "string") {
+      return newBounds;
+    } else if (
+      newBounds[0] === bounds[0] &&
+      newBounds[1] === bounds[1] &&
+      newBounds[2] === bounds[2] &&
+      newBounds[3] === bounds[3]
+    ) {
+      return "{true}";
+    } else {
+      return newBounds;
+    }
+  }
+};
+
+export const binaryOrRanges = <T extends number | readonly [number, number]>(
+  a: ConditionRange<T>,
+  b: ConditionRange<T>
+): ConditionRange<T>[] => {
+  const [aMinInclusive, aMin, aMax, aMaxInclusive] = a;
+  const aMinValue = typeof aMin === "number" ? aMin : aMin[0] / aMin[1];
+  const aMaxValue = typeof aMax === "number" ? aMax : aMax[0] / aMax[1];
+  const [bMinInclusive, bMin, bMax, bMaxInclusive] = b;
+  const bMinValue = typeof bMin === "number" ? bMin : bMin[0] / bMin[1];
+  const bMaxValue = typeof bMax === "number" ? bMax : bMax[0] / bMax[1];
+
+  let rangesOverlap = false;
+  if (aMinValue < bMinValue || (aMinValue === bMinValue && aMinInclusive)) {
+    // aMin lower or same
+    rangesOverlap =
+      bMinValue < aMaxValue ||
+      (bMinValue === aMaxValue && (bMinInclusive || aMaxInclusive));
+  } else {
+    // bMin lower
+    rangesOverlap =
+      aMinValue < bMaxValue ||
+      (aMinValue === bMaxValue && (aMinInclusive || bMaxInclusive));
+  }
+
+  if (rangesOverlap) {
+    const minMin = aMinValue < bMinValue ? aMin : bMin;
+    let minMinInclusive = aMinInclusive || bMinInclusive;
+    if (aMinValue > bMinValue) minMinInclusive = bMinInclusive;
+    else if (aMinValue < bMinValue) minMinInclusive = aMinInclusive;
+
+    const maxMax = aMaxValue < bMaxValue ? aMax : bMax;
+    let maxMaxInclusive = aMaxInclusive || bMaxInclusive;
+    if (aMaxValue > bMaxValue) maxMaxInclusive = aMaxInclusive;
+    else if (aMaxValue < bMaxValue) maxMaxInclusive = bMaxInclusive;
+
+    return [[minMinInclusive, minMin, maxMax, maxMaxInclusive]];
+  } else {
+    return [a, b];
+  }
+};
+
+export const notRatioRange = (
+  pair: RangeRatioConditionPair
+): ConditionRange<readonly [number, number]>[] | "{false}" => {
+  if (typeof pair[1] === "string") throw new Error("expected range");
+
+  const { bounds } = RANGE_RATIO_FEATURES[pair[0]];
+  const [minInclusive, min, max, maxInclusive] = pair[1];
+  const minValue = min[0] / min[1];
+  const maxValue = max[0] / max[1];
+
+  const minBoundValue = bounds[1][0] / bounds[1][1];
+  const minBoundInclusive = bounds[0];
+  const maxBoundValue = bounds[2][0] / bounds[2][1];
+  const maxBoundInclusive = bounds[3];
+
+  const isUnboundedAtBottom =
+    minValue < minBoundValue ||
+    (minValue === minBoundValue && !(minBoundInclusive && !minInclusive));
+  const isUnboundedAtTop =
+    maxValue > maxBoundValue ||
+    (maxValue === maxBoundValue && !(maxBoundInclusive && !maxInclusive));
+
+  if (isUnboundedAtBottom) {
+    if (isUnboundedAtTop) return "{false}";
+    else return [[!maxInclusive, max, bounds[2], bounds[3]]];
+  } else if (isUnboundedAtTop) {
+    return [[bounds[0], bounds[1], min, !minInclusive]];
+  } else {
+    return [
+      [bounds[0], bounds[1], min, !minInclusive],
+      [!maxInclusive, max, bounds[2], bounds[3]],
+    ];
+  }
+};
+
+export function notNumberRange(
+  pair: RangeNumberConditionPair
+): ConditionRange[] | "{false}" {
+  if (typeof pair[1] === "string") throw new Error("expected range");
+
+  const { bounds } = RANGE_NUMBER_FEATURES[pair[0]];
+  const [minInclusive, min, max, maxInclusive] = pair[1];
+  const minBoundValue = bounds[1];
+  const minBoundInclusive = bounds[0];
+  const maxBoundValue = bounds[2];
+  const maxBoundInclusive = bounds[3];
+
+  const isUnboundedAtBottom =
+    min < minBoundValue ||
+    (min === minBoundValue && !(minBoundInclusive && !minInclusive));
+  const isUnboundedAtTop =
+    max > maxBoundValue ||
+    (max === maxBoundValue && !(maxBoundInclusive && !maxInclusive));
+
+  if (isUnboundedAtBottom) {
+    if (isUnboundedAtTop) return "{false}";
+    else return [[!maxInclusive, max, bounds[2], bounds[3]]];
+  } else if (isUnboundedAtTop) {
+    return [[bounds[0], bounds[1], min, !minInclusive]];
+  } else {
+    return [
+      [bounds[0], bounds[1], min, !minInclusive],
+      [!maxInclusive, max, bounds[2], bounds[3]],
+    ];
+  }
+}
