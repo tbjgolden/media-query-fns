@@ -324,7 +324,6 @@ export const simplifyMediaFeature = (
 
   if (mediaFeature.context === "range") {
     if (isRangeKey(feature)) {
-      const { bounds } = RANGE_NUMBER_FEATURES[feature];
       const { range } = mediaFeature;
       if (range.leftToken !== null && range.rightToken !== null) {
         if (range.leftOp === "<" || range.leftOp === "<=") {

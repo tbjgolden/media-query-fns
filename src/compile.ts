@@ -149,9 +149,9 @@ export const invertPerm = (set: Perm): Perm[] => {
           } else if (p[0] === "grid") {
             notConditions = [["grid", p[1] === 0 ? 1 : 0]];
           } else {
-            notConditions = Object.keys(DISCRETE_FEATURES[p[0]]).map(
-              (value) => [p[0], value] as ConditionPair
-            );
+            notConditions = Object.keys(DISCRETE_FEATURES[p[0]])
+              .filter((value) => value !== p[1])
+              .map((value) => [p[0], value] as ConditionPair);
           }
         } else if (hasRangeRatioKey(p)) {
           const r = notRatioRange(p);
@@ -168,16 +168,11 @@ export const invertPerm = (set: Perm): Perm[] => {
   }
 
   const invertedPerms: Perm[] = [];
-  for (let i = 0; i < combinations.length; i++) {
-    for (const notCondition of combinations[i][1]) {
-      const perm: Perm = {};
-      attachPair(perm, notCondition);
-      for (let j = 0; j < combinations.length; j++) {
-        if (i !== j) {
-          attachPair(perm, combinations[j][0]);
-        }
-      }
-      invertedPerms.push(perm);
+  for (const [, notConditions] of combinations) {
+    for (const notCondition of notConditions) {
+      invertedPerms.push({
+        [notCondition[0]]: notCondition[1],
+      });
     }
   }
   return invertedPerms;
@@ -312,7 +307,6 @@ export const mediaConditionToPerms = (
   } else if (mediaCondition.operator === "and") {
     return conditionSetsSets.reduce((a, b) => andPerms(a, b));
   } else {
-    // "not"
     return notPerms(conditionSetsSets[0]);
   }
 };
@@ -401,16 +395,7 @@ export const compileAST = (
         extraConditions.push(
           ...notPerms(
             mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions)
-          ).map((conditionSet) => {
-            if (mediaQuery.mediaType === "all") {
-              return conditionSet;
-            } else {
-              return {
-                ...conditionSet,
-                "media-type": mediaQuery.mediaType,
-              };
-            }
-          })
+          )
         );
       }
     } else {
@@ -431,13 +416,7 @@ export const compileAST = (
       }
     }
 
-    if (
-      extraConditions.every(
-        (condition) => (condition["invalid-features"] ?? []).length === 0
-      )
-    ) {
-      allConditions.push(...extraConditions);
-    }
+    allConditions.push(...extraConditions);
   }
 
   return simplifyPerms(allConditions);

@@ -43,7 +43,6 @@ test("handles not queries", () => {
   expect(compileQuery("not (min-width: 120px)")).toEqual(
     simplifyPerms([
       {
-        "media-type": "all",
         width: [true, 0, 120, false],
       },
     ])
@@ -53,11 +52,9 @@ test("handles not queries", () => {
   ).toEqual(
     simplifyPerms([
       {
-        "media-type": "all",
         width: [true, 0, 100, false],
       },
       {
-        "media-type": "all",
         width: [false, 200, Infinity, true],
       },
     ])
@@ -84,11 +81,9 @@ test("handles not queries", () => {
         "media-type": "not-print",
       },
       {
-        "media-type": "print",
         width: [true, 0, 100, false],
       },
       {
-        "media-type": "print",
         width: [false, 200, Infinity, true],
       },
     ])
@@ -103,7 +98,6 @@ test("handles not queries", () => {
         "media-type": "not-screen",
       },
       {
-        "media-type": "screen",
         width: [true, 100, 200, true],
       },
     ])
@@ -205,11 +199,9 @@ test("not operator", () => {
         "media-type": "not-print",
       },
       {
-        "media-type": "print",
         width: [true, 0, 110, false],
       },
       {
-        "media-type": "print",
         width: [false, 220, Infinity, false],
       },
     ])
@@ -220,7 +212,6 @@ test("not operator", () => {
         "media-type": "not-print",
       },
       {
-        "media-type": "print",
         width: [true, 110, 220, true],
       },
     ])
@@ -243,6 +234,33 @@ test("custom units", () => {
 
 test("found bugs", () => {
   expect(
+    compileQuery(
+      "not screen and ((not ((min-width: 1000px) and (orientation: landscape))) or (color))"
+    )
+  ).toEqual(simplifyPerms([]));
+  expect(
+    compileQuery(
+      "not screen and ((not ((min-width: 1000px) and (orientation: landscape))) or (color)), (monochrome)"
+    )
+  ).toEqual(simplifyPerms([]));
+
+  expect(compileQuery("(16/10 <= aspect-ratio < 16/10)")).toEqual({
+    falseFeatures: ["aspect-ratio"],
+    invalidFeatures: [],
+    simplePerms: [],
+  });
+
+  expect(compileQuery("(hover)")).toEqual({
+    falseFeatures: [],
+    invalidFeatures: [],
+    simplePerms: [
+      {
+        hover: "hover",
+      },
+    ],
+  });
+
+  expect(
     simplifyPerms(
       invertPerm({
         width: [true, 1000, Infinity, true],
@@ -254,12 +272,10 @@ test("found bugs", () => {
     invalidFeatures: [],
     simplePerms: [
       {
-        "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
         width: [true, 0, 1000, false],
       },
       {
         "aspect-ratio": [false, [0, 1], [1, 1], false],
-        width: [true, 1000, Infinity, false],
       },
     ],
   });
@@ -270,9 +286,6 @@ test("found bugs", () => {
     simplePerms: [{}],
   });
 
-  // "not screen and (min-width: 1000px) and (orientation: landscape)"
-  // "not (screen and (min-width: 1000px) and (orientation: landscape))"
-  // "(not-screen or (screen and width < 1000px and landscape) or (screen and aspect-ratio < 1/1))"
   expect(
     compileQuery(
       "not screen and (min-width: 1000px) and (orientation: landscape)"
@@ -283,14 +296,10 @@ test("found bugs", () => {
     simplePerms: [
       { "media-type": "not-screen" },
       {
-        "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
-        "media-type": "screen",
         width: [true, 0, 1000, false],
       },
       {
         "aspect-ratio": [false, [0, 1], [1, 1], false],
-        "media-type": "screen",
-        width: [true, 1000, Infinity, false],
       },
     ],
   });
@@ -302,10 +311,10 @@ test("found bugs", () => {
   ).toEqual({
     simplePerms: [
       {
-        "aspect-ratio": [false, [0, 1], [1, 1], false],
+        width: [true, 0, 1000, false],
       },
       {
-        width: [true, 0, 1000, false],
+        "aspect-ratio": [false, [0, 1], [1, 1], false],
       },
     ],
     invalidFeatures: [],

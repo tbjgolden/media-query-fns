@@ -249,35 +249,49 @@ export const andRanges = <T extends number | readonly [number, number]>(
 export const boundRange = <T extends RangeConditionPair>(pair: T): T[1] => {
   if (hasRangeRatioKey(pair)) {
     const { bounds } = RANGE_RATIO_FEATURES[pair[0]];
-    const newBounds = andRanges(pair[1], bounds);
-    if (typeof newBounds === "string") {
-      return newBounds;
+    const range = andRanges(pair[1], bounds);
+    if (typeof range === "string") {
+      return range;
     } else if (
-      newBounds[0] === bounds[0] &&
-      newBounds[1][0] === bounds[1][0] &&
-      newBounds[1][1] === bounds[1][1] &&
-      newBounds[2][0] === bounds[2][0] &&
-      newBounds[2][1] === bounds[2][1] &&
-      newBounds[3] === bounds[3]
+      range[0] === bounds[0] &&
+      range[1][0] === bounds[1][0] &&
+      range[1][1] === bounds[1][1] &&
+      range[2][0] === bounds[2][0] &&
+      range[2][1] === bounds[2][1] &&
+      range[3] === bounds[3]
     ) {
       return "{true}";
     } else {
-      return newBounds;
+      const min = range[1][0] / range[1][1];
+      const max = range[2][0] / range[2][1];
+
+      if (min > max || (min === max && !(range[0] && range[3]))) {
+        return "{false}";
+      } else {
+        return range;
+      }
     }
   } else {
     const { bounds } = RANGE_NUMBER_FEATURES[pair[0]];
-    const newBounds = andRanges(pair[1], bounds);
-    if (typeof newBounds === "string") {
-      return newBounds;
+    const range = andRanges(pair[1], bounds);
+    if (typeof range === "string") {
+      return range;
     } else if (
-      newBounds[0] === bounds[0] &&
-      newBounds[1] === bounds[1] &&
-      newBounds[2] === bounds[2] &&
-      newBounds[3] === bounds[3]
+      range[0] === bounds[0] &&
+      range[1] === bounds[1] &&
+      range[2] === bounds[2] &&
+      range[3] === bounds[3]
     ) {
       return "{true}";
     } else {
-      return newBounds;
+      if (
+        range[1] > range[2] ||
+        (range[1] === range[2] && !(range[0] && range[3]))
+      ) {
+        return "{false}";
+      } else {
+        return range;
+      }
     }
   }
 };

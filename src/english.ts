@@ -430,10 +430,177 @@ export const featurePairToEnglishQuerySegments = (
         value,
       },
     ];
+  } else if (p[0] === "color") {
+    const [, , maxBounds, maxBoundsInclusive] =
+      RANGE_NUMBER_FEATURES[p[0]].bounds;
+    const [minInclusive, min, max, maxInclusive] = p[1];
+
+    const includesZero = min === 0 && minInclusive && (max > 0 || maxInclusive);
+    const lowerBounded = min > 1 || (min === 1 && true > minInclusive);
+    const upperBounded =
+      max < maxBounds ||
+      (max === maxBounds && maxBoundsInclusive > maxInclusive);
+
+    const segments: QuerySegment[] = [];
+    if (min === max && minInclusive && maxInclusive) {
+      if (includesZero) {
+        segments.push({
+          type: "plain",
+          value: `not in color`,
+        });
+      } else {
+        segments.push(
+          {
+            type: "feature",
+            value: p[0],
+          },
+          {
+            type: "comparison",
+            value: "=",
+          },
+          {
+            type: "plain",
+            value: `${min * 3}-bit`,
+          }
+        );
+      }
+    } else {
+      if (!lowerBounded && !upperBounded) {
+        segments.push({
+          type: "plain",
+          value: `in`,
+        });
+      }
+      if (lowerBounded) {
+        segments.push(
+          {
+            type: "plain",
+            value: `${min * 3}-bit`,
+          },
+          {
+            type: "comparison",
+            value: minInclusive ? "≤" : "<",
+          }
+        );
+      }
+      segments.push({
+        type: "feature",
+        value: p[0],
+      });
+      if (upperBounded) {
+        segments.push(
+          {
+            type: "comparison",
+            value: maxInclusive ? "≤" : "<",
+          },
+          {
+            type: "plain",
+            value: `${max * 3}-bit${lowerBounded ? "" : ` or not in color`}`,
+          }
+        );
+      }
+    }
+    return segments;
+  } else if (p[0] === "monochrome") {
+    const [, , maxBounds, maxBoundsInclusive] =
+      RANGE_NUMBER_FEATURES[p[0]].bounds;
+    const [minInclusive, min, max, maxInclusive] = p[1];
+
+    const ifIncludesZero =
+      min === 0 && minInclusive && (max > 0 || maxInclusive);
+    const lowerBounded = min > 1 || (min === 1 && true > minInclusive);
+    const upperBounded =
+      max < maxBounds ||
+      (max === maxBounds && maxBoundsInclusive > maxInclusive);
+
+    const segments: QuerySegment[] = [];
+    if (min === max && minInclusive && maxInclusive) {
+      if (!ifIncludesZero) {
+        segments.push(
+          {
+            type: "feature",
+            value: p[0],
+          },
+          {
+            type: "plain",
+            value: "and pixels",
+          },
+          {
+            type: "comparison",
+            value: "=",
+          },
+          {
+            type: "plain",
+            value: `${min}-bit`,
+          }
+        );
+      }
+    } else {
+      if (ifIncludesZero) {
+        segments.push({
+          type: "paren",
+          value: "(",
+        });
+      }
+      segments.push({
+        type: "plain",
+        value: "monochrome",
+      });
+      if (lowerBounded || upperBounded) {
+        segments.push({
+          type: "plain",
+          value: "and",
+        });
+        if (lowerBounded) {
+          segments.push(
+            {
+              type: "plain",
+              value: `${min}-bit`,
+            },
+            {
+              type: "comparison",
+              value: minInclusive ? "≤" : "<",
+            }
+          );
+        }
+        segments.push({
+          type: "plain",
+          value: "pixels",
+        });
+        if (upperBounded) {
+          segments.push(
+            {
+              type: "comparison",
+              value: maxInclusive ? "≤" : "<",
+            },
+            {
+              type: "plain",
+              value: `${max}-bit`,
+            }
+          );
+        }
+
+        if (ifIncludesZero) {
+          segments.push(
+            {
+              type: "bool-op",
+              value: "OR",
+            },
+            {
+              type: "plain",
+              value: "not monochrome",
+            },
+            {
+              type: "paren",
+              value: ")",
+            }
+          );
+        }
+      }
+    }
+    return segments;
   } else if (
-    p[0] === "color" ||
     p[0] === "color-index" ||
-    p[0] === "monochrome" ||
     p[0] === "device-height" ||
     p[0] === "device-width" ||
     p[0] === "height" ||
@@ -553,7 +720,7 @@ export const featurePairToEnglishQuerySegments = (
       return [
         {
           type: "plain",
-          value: `${prefix} portrait${minInclusive ? " or square" : ""}`,
+          value: `${prefix} portrait${maxInclusive ? " or square" : ""}`,
         },
       ];
     }
@@ -568,24 +735,38 @@ export const featurePairToEnglishQuerySegments = (
     };
 
     const segments: QuerySegment[] = [];
-    if (lowerBounded) {
-      segments.push(minDim, {
-        type: "comparison",
-        value: minInclusive ? "≤" : "<",
-      });
-    }
-    segments.push({
-      type: "feature",
-      value: p[0],
-    });
-    if (upperBounded) {
+    if (min === max && minInclusive && maxInclusive) {
       segments.push(
         {
+          type: "feature",
+          value: p[0],
+        },
+        {
           type: "comparison",
-          value: maxInclusive ? "≤" : "<",
+          value: "=",
         },
         maxDim
       );
+    } else {
+      if (lowerBounded) {
+        segments.push(minDim, {
+          type: "comparison",
+          value: minInclusive ? "≤" : "<",
+        });
+      }
+      segments.push({
+        type: "feature",
+        value: p[0],
+      });
+      if (upperBounded) {
+        segments.push(
+          {
+            type: "comparison",
+            value: maxInclusive ? "≤" : "<",
+          },
+          maxDim
+        );
+      }
     }
     return segments;
   } else if (p[0] === "any-hover" || p[0] === "hover") {
@@ -630,7 +811,9 @@ export const featurePairToEnglishQuerySegments = (
           value:
             p[1] === "none"
               ? `no pointing device`
-              : `a pointing device is ${p[1] ? "precise" : "imprecise"}`,
+              : `a pointing device is ${
+                  p[1] === "fine" ? "precise" : "imprecise"
+                }`,
         },
       ];
     }
@@ -650,7 +833,7 @@ export const featurePairToEnglishQuerySegments = (
         type: "plain",
         value:
           p[1] === "interlace"
-            ? `on an alternating frame screen`
+            ? `on alternating frame screen`
             : `on non-alternating frame screen`,
       },
     ];
