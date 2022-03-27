@@ -401,10 +401,12 @@ test("toEnglishString insane query", () => {
   expect(
     toEnglishString(
       compileQuery(
-        "not screen and ((not ((min-width: 1000px) and (orientation: landscape))) or (color)), (monochrome)"
+        "not screen and (((not ((min-width: 1000px) and (orientation: landscape))) or (color))), (monochrome)"
       )
     )
-  ).toEqual("");
+  ).toEqual(
+    "if not a screen OR (1000px ≤ width AND is landscape or square AND not in color) OR monochrome"
+  );
   expect(toEnglishString(compileQuery("(min-width: 120px)"))).toEqual(
     "if 120px ≤ width"
   );

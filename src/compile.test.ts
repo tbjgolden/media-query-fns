@@ -235,14 +235,23 @@ test("custom units", () => {
 test("found bugs", () => {
   expect(
     compileQuery(
-      "not screen and ((not ((min-width: 1000px) and (orientation: landscape))) or (color))"
+      "not screen and (((not ((min-width: 1000px) and (orientation: landscape))) or (color))), (monochrome)"
     )
-  ).toEqual(simplifyPerms([]));
-  expect(
-    compileQuery(
-      "not screen and ((not ((min-width: 1000px) and (orientation: landscape))) or (color)), (monochrome)"
-    )
-  ).toEqual(simplifyPerms([]));
+  ).toEqual(
+    simplifyPerms([
+      {
+        "media-type": "not-screen",
+      },
+      {
+        "aspect-ratio": [true, [1, 1], [Infinity, 1], false],
+        color: [true, 0, 0, true],
+        width: [true, 1000, Infinity, false],
+      },
+      {
+        monochrome: [false, 0, Infinity, false],
+      },
+    ])
+  );
 
   expect(compileQuery("(16/10 <= aspect-ratio < 16/10)")).toEqual({
     falseFeatures: ["aspect-ratio"],
@@ -304,8 +313,6 @@ test("found bugs", () => {
     ],
   });
 
-  // "(not ((min-width: 1000px) and (orientation: landscape)))"
-  // "(width < 1000px) or (aspect-ratio < 1/1)"
   expect(
     compileQuery("(not ((min-width: 1000px) and (orientation: landscape)))")
   ).toEqual({

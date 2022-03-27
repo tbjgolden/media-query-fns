@@ -21,7 +21,7 @@
     "husky": "husky install"
   },
   "dependencies": {
-    "media-query-parser": "^1.0.2"
+    "media-query-parser": "^2.0.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^16.2.1",

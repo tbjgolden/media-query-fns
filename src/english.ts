@@ -982,15 +982,3 @@ export const toEnglishString = (result: EvaluateResult): string => {
   }
   return englishString;
 };
-
-// divs and spans with inline styles, plus semantic where appropriate
-export const toEnglishHTML = (result: EvaluateResult): string => {
-  throw new Error("This function is not yet implemented");
-  return ``;
-};
-
-// use colors to syntax highlight
-export const toEnglishCLIString = (result: EvaluateResult): string => {
-  throw new Error("This function is not yet implemented");
-  return ``;
-};

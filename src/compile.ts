@@ -425,10 +425,4 @@ export const compileAST = (
 export const compileQuery = (
   query: string,
   units: Partial<UnitConversions> = {}
-): EvaluateResult => {
-  const ast = toAST(query);
-  if (ast === null) {
-    throw new Error("Query string was not lexed due to a syntax error");
-  }
-  return compileAST(ast, units);
-};
+): EvaluateResult => compileAST(toAST(query), units);

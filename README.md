@@ -9,7 +9,7 @@ Functions to read media queries from a string/ast and:
 
 - [x] Check if a media query is true for a custom environment
   - [x] Backed up by [hundreds of unit tests](https://github.com/tbjgolden/media-query-fns/blob/main/src/matches.test.ts)
-- [ ] Converts a media query to a human friendly description
+- [x] Converts a media query to a human friendly description
 
 Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) which means:
 
@@ -22,19 +22,33 @@ Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) w
 ## Quickfire examples
 
 ```ts
-import { compileQuery, matches } from "media-query-fns";
-const query = compileQuery(`@media (max-width: 1200px)`);
-const env = (widthPx: number) => ({
+import { compileQuery, matches, toEnglishString } from "media-query-fns";
+
+// returns data that can be used to interpret the query
+const maxWidthQuery = compileQuery(`@media (max-width: 1200px)`);
+// (throws if invalid query syntax)
+
+const testEnv = (widthPx = 1280, heightPx = 800) => ({
   widthPx,
-  heightPx: 800,
+  heightPx,
+  deviceWidthPx: widthPx,
+  deviceHeightPx: heightPx,
   dppx: 2,
-  deviceWidthPx: 1280,
-  deviceHeightPx: 800,
 });
-console.log(matches(query, env(1280) }));
-// false
-console.log(matches(query, env(900) }));
+console.log(matches(maxWidthQuery, testEnv(1280))); // false
+console.log(matches(maxWidthQuery, testEnv(1000))); // true
+
+const complexQuery = compileQuery(
+  `@media screen and (8 = color) and (orientation)`
+);
+console.log(matches(complexQuery, testEnv()));
 // true
+
+console.log(toEnglishString(maxWidthQuery));
+// 'if width ≤ 1200px'
+console.log(toEnglishString(complexQuery));
+// 'if (is screen AND color = 24-bit)'
+// note: (orientation) is always true, so it's removed for brevity
 ```
 
 ## Considerations & Caveats
