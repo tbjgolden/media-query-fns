@@ -131,7 +131,7 @@ export const validateEnv = (env: Environment) => {
   if (!(Number.isInteger(env.colorBits) && env.colorBits >= 0)) {
     throw badInput("colorBits");
   }
-  if (!(Number.isInteger(env.dppx) && env.dppx >= 0)) {
+  if (env.dppx <= 0) {
     throw badInput("dppx");
   }
   if (

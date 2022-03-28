@@ -5,6 +5,8 @@
 [![test coverage](https://img.shields.io/badge/dynamic/json?style=flat-square&color=brightgreen&label=coverage&query=%24.total.branches.pct&url=https%3A%2F%2Fraw.githubusercontent.com%2Ftbjgolden%2Fmedia-query-fns%2Fmain%2Fcoverage%2Fcoverage-summary.json)](https://www.npmjs.com/package/media-query-fns)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/tbjgolden/media-query-fns/Release?style=flat-square)](https://github.com/tbjgolden/media-query-fns/actions?query=workflow%3ARelease)
 
+![](screen.gif)
+
 Functions to read media queries from a string/ast and:
 
 - [x] Check if a media query is true for a custom environment
