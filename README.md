@@ -16,10 +16,10 @@ Functions to read media queries from a string/ast and:
 Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) which means:
 
 - [x] **parses any correct CSS media queries**
-- [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-4/
+- [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-5/ (as of 2022-12-04)
 - [x] **TypeScript friendly**
 - [x] **all valid queries parsed and interpreted, even newer syntax like
-      `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (monochrome))`**
+      `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (prefers-color-scheme: dark))`**
 
 ## Quickfire examples
 
