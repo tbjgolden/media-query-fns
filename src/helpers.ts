@@ -34,6 +34,25 @@ export type DiscreteFeatures = {
   pointer: "none" | "coarse" | "fine";
   scan: "interlace" | "progressive";
   update: "none" | "slow" | "fast";
+  "display-mode": "fullscreen" | "standalone" | "minimal-ui" | "browser";
+  "dynamic-range": "standard" | "high";
+  "environment-blending": "opaque" | "additive" | "subtractive";
+  "forced-colors": "none" | "active";
+  "inverted-colors": "none" | "inverted";
+  "nav-controls": "none" | "back";
+  "prefers-color-scheme": "light" | "dark";
+  "prefers-contrast": "no-preference" | "less" | "more" | "custom";
+  "prefers-reduced-data": "no-preference" | "reduce";
+  "prefers-reduced-motion": "no-preference" | "reduce";
+  "prefers-reduced-transparency": "no-preference" | "reduce";
+  scripting: "none" | "initial-only" | "enabled";
+  "video-color-gamut": readonly [
+    belowSrgb: boolean,
+    srgbAndBelowP3: boolean,
+    p3AndBelowRec2020: boolean,
+    rec2020AndAbove: boolean
+  ];
+  "video-dynamic-range": "standard" | "high";
 };
 export type RangeRatioFeatures = {
   "aspect-ratio": ConditionRange<readonly [number, number]>;
@@ -48,6 +67,8 @@ export type RangeNumberFeatures = {
   monochrome: ConditionRange;
   resolution: ConditionRange;
   width: ConditionRange;
+  "horizontal-viewport-segments": ConditionRange;
+  "vertical-viewport-segments": ConditionRange;
 };
 export type RangeFeatures = RangeRatioFeatures & RangeNumberFeatures;
 export type MediaFeatures = DiscreteFeatures & RangeFeatures;
