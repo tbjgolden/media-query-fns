@@ -327,4 +327,17 @@ test("found bugs", () => {
     invalidFeatures: [],
     falseFeatures: [],
   });
+
+  expect(compileQuery("(prefers-color-scheme: dark)")).toEqual({
+    simplePerms: [
+      {
+        width: [true, 0, 1000, false],
+      },
+      {
+        "aspect-ratio": [false, [0, 1], [1, 1], false],
+      },
+    ],
+    invalidFeatures: [],
+    falseFeatures: [],
+  });
 });

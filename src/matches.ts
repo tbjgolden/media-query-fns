@@ -22,6 +22,26 @@ export type Environment = {
   monochromeBits: "not-monochrome" | Integer;
   colorIndex: "none" | Integer;
   dppx: Integer;
+  displayMode: "fullscreen" | "standalone" | "minimal-ui" | "browser";
+  dynamicRange: "not-hdr" | "hdr";
+  environmentBlending: "opaque" | "additive" | "subtractive";
+  forcedColors: "none" | "active";
+  invertedColors: "none" | "inverted";
+  navControls: "none" | "back";
+  prefersColorScheme: "no-preference" | "light" | "dark";
+  prefersContrast: "no-preference" | "less" | "more" | "custom";
+  prefersReducedData: "no-preference" | "reduce";
+  prefersReducedMotion: "no-preference" | "reduce";
+  prefersReducedTransparency: "no-preference" | "reduce";
+  scripting: "none" | "initial-only" | "enabled";
+  videoColorGamut:
+    | "not-srgb"
+    | "srgb-but-not-p3"
+    | "p3-but-not-rec2020"
+    | "rec2020";
+  videoDynamicRange: "not-hdr" | "hdr";
+  horizontalViewportSegments: Integer;
+  verticalViewportSegments: Integer;
 };
 
 type DefaultableFeatures =
@@ -38,7 +58,23 @@ type DefaultableFeatures =
   | "update"
   | "colorIndex"
   | "colorBits"
-  | "monochromeBits";
+  | "monochromeBits"
+  | "displayMode"
+  | "dynamicRange"
+  | "environmentBlending"
+  | "forcedColors"
+  | "invertedColors"
+  | "navControls"
+  | "prefersColorScheme"
+  | "prefersContrast"
+  | "prefersReducedData"
+  | "prefersReducedMotion"
+  | "prefersReducedTransparency"
+  | "scripting"
+  | "videoColorGamut"
+  | "videoDynamicRange"
+  | "horizontalViewportSegments"
+  | "verticalViewportSegments";
 
 export const DESKTOP_ENVIRONMENT: Pick<Environment, DefaultableFeatures> = {
   mediaType: "screen",
@@ -55,6 +91,22 @@ export const DESKTOP_ENVIRONMENT: Pick<Environment, DefaultableFeatures> = {
   colorIndex: "none",
   colorBits: 8,
   monochromeBits: "not-monochrome",
+  displayMode: "browser",
+  dynamicRange: "not-hdr",
+  environmentBlending: "opaque",
+  forcedColors: "none",
+  invertedColors: "none",
+  navControls: "back",
+  prefersColorScheme: "no-preference",
+  prefersContrast: "no-preference",
+  prefersReducedData: "no-preference",
+  prefersReducedMotion: "no-preference",
+  prefersReducedTransparency: "no-preference",
+  scripting: "enabled",
+  videoColorGamut: "srgb-but-not-p3",
+  videoDynamicRange: "not-hdr",
+  horizontalViewportSegments: 1,
+  verticalViewportSegments: 1,
 };
 
 const badInput = (key: string): Error => {

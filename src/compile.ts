@@ -82,30 +82,21 @@ export const mergePerms = (a: Perm, b: Perm): Perm => {
           // qq is type safe from the above checks
           const qq = merged as MediaFeatures;
           if (hasRangeNumberKey(p)) {
-            attachPair(qq, [p[0], andRanges(qq[p[0]], p[1])]);
+            attachPair(qq, [p[0], andRanges(qq[p[0]], p[1])] as ConditionPair);
           } else if (hasRangeRatioKey(p)) {
             attachPair(qq, [p[0], andRanges(qq[p[0]], p[1])]);
-          } else if (p[0] === "color-gamut") {
+          } else if (p[0] === "color-gamut" || p[0] === "video-color-gamut") {
             qq[p[0]] = [
               qq[p[0]][0] && p[1][0],
               qq[p[0]][1] && p[1][1],
               qq[p[0]][2] && p[1][2],
               qq[p[0]][3] && p[1][3],
             ];
-          } else if (p[0] === "any-hover" || p[0] === "hover") {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
-          } else if (p[0] === "any-pointer" || p[0] === "pointer") {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
-          } else if (p[0] === "grid") {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
-          } else if (p[0] === "overflow-block") {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
-          } else if (p[0] === "overflow-inline") {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
-          } else if (p[0] === "scan") {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
           } else {
-            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"]);
+            attachPair(qq, [
+              p[0],
+              qq[p[0]] === p[1] ? qq[p[0]] : "{false}",
+            ] as ConditionPair);
           }
         }
       }
@@ -139,9 +130,9 @@ export const invertPerm = (set: Perm): Perm[] => {
       } else {
         condition = p;
         if (p[1] === "{false}") {
-          notConditions = [[p[0], "{true}"]];
+          notConditions = [[p[0], "{true}"] as ConditionPair];
         } else if (p[1] === "{true}") {
-          notConditions = [[p[0], "{false}"]];
+          notConditions = [[p[0], "{false}"] as ConditionPair];
         } else if (hasDiscreteKey(p)) {
           if (p[0] === "color-gamut") {
             const c = p[1];

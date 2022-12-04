@@ -1,5 +1,3 @@
-export const log = (x: unknown) => console.log(JSON.stringify(x, null, 2));
-
 type Values<T> = T[keyof T];
 type KVPairs<T> = Values<{
   [Property in keyof T]: [Property, T[Property]];
@@ -83,59 +81,6 @@ export type RangeRatioConditionPair = KVPairs<Conditional<RangeRatioFeatures>>;
 export type RangeNumberConditionPair = KVPairs<
   Conditional<RangeNumberFeatures>
 >;
-
-export const permToConditionPairs = (perm: Perm): ConditionPair[] => {
-  return Object.entries(perm).filter(
-    (pair) => pair[1] !== undefined
-  ) as ConditionPair[];
-};
-
-// prettier-ignore
-const DISCRETE_KEYS = new Set([
-  "any-hover", "any-pointer", "color-gamut", "grid", "hover",
-  "overflow-block", "overflow-inline", "pointer", "scan", "update"
-]);
-export const hasDiscreteKey = (
-  pair: ConditionPair
-): pair is DiscreteConditionPair => DISCRETE_KEYS.has(pair[0]);
-export const isDiscreteKey = (key: string): key is keyof DiscreteFeatures =>
-  DISCRETE_KEYS.has(key);
-
-const RANGE_RATIO_KEYS = new Set(["aspect-ratio", "device-aspect-ratio"]);
-export const hasRangeRatioKey = (
-  pair: ConditionPair
-): pair is RangeRatioConditionPair => RANGE_RATIO_KEYS.has(pair[0]);
-export const isRangeRatioKey = (key: string): key is keyof RangeRatioFeatures =>
-  RANGE_RATIO_KEYS.has(key);
-
-// prettier-ignore
-const RANGE_NUMBER_KEYS = new Set([
-  "color", "color-index", "device-height", "device-width",
-  "height", "monochrome", "resolution", "width",
-]);
-export const hasRangeNumberKey = (
-  pair: ConditionPair
-): pair is RangeNumberConditionPair => RANGE_NUMBER_KEYS.has(pair[0]);
-export const isRangeNumberKey = (
-  key: string
-): key is keyof RangeNumberFeatures => RANGE_NUMBER_KEYS.has(key);
-
-export const hasRangeKey = (pair: ConditionPair): pair is RangeConditionPair =>
-  hasRangeNumberKey(pair) || hasRangeRatioKey(pair);
-export const isRangeKey = (key: string): key is keyof RangeNumberFeatures =>
-  isRangeNumberKey(key) || isRangeRatioKey(key);
-
-// prettier-ignore
-const PERM_KEYS = new Set([
-  "any-hover", "any-pointer", "color-gamut", "grid", "hover",
-  "overflow-block", "overflow-inline", "pointer", "scan", "update",
-  "aspect-ratio", "color", "color-index", "device-aspect-ratio",
-  "device-height", "device-width", "height", "monochrome", "resolution",
-  "width", "media-type", "invalid-features",
-]);
-export const isPermKey = (key: string): key is keyof Perm => PERM_KEYS.has(key);
-export const isFeatureKey = (key: string): key is keyof MediaFeatures =>
-  isRangeNumberKey(key) || isRangeRatioKey(key) || isDiscreteKey(key);
 
 export const DISCRETE_FEATURES = {
   "any-hover": { none: 1, hover: 1 },
@@ -229,6 +174,53 @@ export const RANGE_RATIO_FEATURES = {
     bounds: [false, [0, 1], [Infinity, 1], false],
   },
 } as const;
+
+export const permToConditionPairs = (perm: Perm): ConditionPair[] => {
+  return Object.entries(perm).filter(
+    (pair) => pair[1] !== undefined
+  ) as ConditionPair[];
+};
+
+// prettier-ignore
+const DISCRETE_KEYS = new Set(Object.keys(DISCRETE_FEATURES));
+export const hasDiscreteKey = (
+  pair: ConditionPair
+): pair is DiscreteConditionPair => DISCRETE_KEYS.has(pair[0]);
+export const isDiscreteKey = (key: string): key is keyof DiscreteFeatures =>
+  DISCRETE_KEYS.has(key);
+
+const RANGE_RATIO_KEYS = new Set(Object.keys(RANGE_RATIO_FEATURES));
+export const hasRangeRatioKey = (
+  pair: ConditionPair
+): pair is RangeRatioConditionPair => RANGE_RATIO_KEYS.has(pair[0]);
+export const isRangeRatioKey = (key: string): key is keyof RangeRatioFeatures =>
+  RANGE_RATIO_KEYS.has(key);
+
+// prettier-ignore
+const RANGE_NUMBER_KEYS = new Set(Object.keys(RANGE_NUMBER_FEATURES));
+export const hasRangeNumberKey = (
+  pair: ConditionPair
+): pair is RangeNumberConditionPair => RANGE_NUMBER_KEYS.has(pair[0]);
+export const isRangeNumberKey = (
+  key: string
+): key is keyof RangeNumberFeatures => RANGE_NUMBER_KEYS.has(key);
+
+export const hasRangeKey = (pair: ConditionPair): pair is RangeConditionPair =>
+  hasRangeNumberKey(pair) || hasRangeRatioKey(pair);
+export const isRangeKey = (key: string): key is keyof RangeNumberFeatures =>
+  isRangeNumberKey(key) || isRangeRatioKey(key);
+
+// prettier-ignore
+const PERM_KEYS = new Set([
+  "any-hover", "any-pointer", "color-gamut", "grid", "hover",
+  "overflow-block", "overflow-inline", "pointer", "scan", "update",
+  "aspect-ratio", "color", "color-index", "device-aspect-ratio",
+  "device-height", "device-width", "height", "monochrome", "resolution",
+  "width", "media-type", "invalid-features",
+]);
+export const isPermKey = (key: string): key is keyof Perm => PERM_KEYS.has(key);
+export const isFeatureKey = (key: string): key is keyof MediaFeatures =>
+  isRangeNumberKey(key) || isRangeRatioKey(key) || isDiscreteKey(key);
 
 export const attachPair = <T extends object>(
   obj: T,
