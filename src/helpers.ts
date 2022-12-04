@@ -1,11 +1,3 @@
-// import util from "util";
-// export const log = (x: unknown) =>
-//   console.log(
-//     util.inspect(x, {
-//       depth: 10,
-//       colors: true,
-//     })
-//   );
 export const log = (x: unknown) => console.log(JSON.stringify(x, null, 2));
 
 type Values<T> = T[keyof T];
@@ -156,6 +148,20 @@ export const DISCRETE_FEATURES = {
   pointer: { none: 1, coarse: 1, fine: 1 },
   scan: { interlace: 1, progressive: 1 },
   update: { none: 1, slow: 1, fast: 1 },
+  "display-mode": { fullscreen: 1, standalone: 1, "minimal-ui": 1, browser: 1 },
+  "dynamic-range": { standard: 1, high: 1 },
+  "environment-blending": { opaque: 1, additive: 1, subtractive: 1 },
+  "forced-colors": { none: 1, active: 1 },
+  "inverted-colors": { none: 1, inverted: 1 },
+  "nav-controls": { none: 1, back: 1 },
+  "prefers-color-scheme": { light: 1, dark: 1 },
+  "prefers-contrast": { "no-preference": 1, less: 1, more: 1, custom: 1 },
+  "prefers-reduced-data": { "no-preference": 1, reduce: 1 },
+  "prefers-reduced-motion": { "no-preference": 1, reduce: 1 },
+  "prefers-reduced-transparency": { "no-preference": 1, reduce: 1 },
+  scripting: { none: 1, "initial-only": 1, enabled: 1 },
+  "video-color-gamut": { srgb: 1, p3: 1, rec2020: 1 },
+  "video-dynamic-range": { standard: 1, high: 1 },
 } as const;
 
 export const RANGE_NUMBER_FEATURES = {
@@ -197,6 +203,16 @@ export const RANGE_NUMBER_FEATURES = {
   resolution: {
     feature: "resolution",
     type: "resolution",
+    bounds: [true, 0, Infinity, false],
+  },
+  "horizontal-viewport-segments": {
+    feature: "horizontal-viewport-segments",
+    type: "integer",
+    bounds: [true, 0, Infinity, false],
+  },
+  "vertical-viewport-segments": {
+    feature: "vertical-viewport-segments",
+    type: "integer",
     bounds: [true, 0, Infinity, false],
   },
 } as const;
