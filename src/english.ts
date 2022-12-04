@@ -24,12 +24,28 @@ const SORT_ORDER: Record<keyof SimplePerm, number> = {
   color: 12,
   monochrome: 13,
   "color-gamut": 14,
-  update: 15,
-  scan: 16,
-  "color-index": 17,
-  "overflow-block": 18,
-  "overflow-inline": 19,
-  grid: 20,
+  "video-color-gamut": 15,
+  update: 16,
+  scan: 17,
+  "color-index": 18,
+  "overflow-block": 19,
+  "overflow-inline": 20,
+  "prefers-color-scheme": 21,
+  "prefers-contrast": 22,
+  "prefers-reduced-data": 23,
+  "prefers-reduced-motion": 24,
+  "prefers-reduced-transparency": 25,
+  "dynamic-range": 26,
+  "video-dynamic-range": 27,
+  "display-mode": 28,
+  "nav-controls": 29,
+  scripting: 30,
+  "horizontal-viewport-segments": 31,
+  "vertical-viewport-segments": 32,
+  "forced-colors": 33,
+  "inverted-colors": 34,
+  "environment-blending": 35,
+  grid: 36,
 };
 
 type QuerySegment = {
@@ -65,7 +81,9 @@ const simplify = (a: number, b: number): [number, number] => {
 
 const to5dp = (n: number) => parseFloat(n.toFixed(5));
 
-const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
+const asGamutDescriptions = (
+  feature: "color-gamut" | "video-color-gamut"
+): Record<number, Array<QuerySegment>> => [
   // [ false, false, false, false ],
   [
     {
@@ -85,7 +103,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ false, false, true, false ],
@@ -100,7 +118,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -123,7 +141,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ false, true, false, false ],
@@ -138,7 +156,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -161,7 +179,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -185,7 +203,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ false, true, true, false ],
@@ -200,7 +218,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -223,14 +241,14 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ true, false, false, false ],
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -245,7 +263,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -269,14 +287,14 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ true, false, true, false ],
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -300,7 +318,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -315,7 +333,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -339,14 +357,14 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ true, true, false, false ],
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -361,7 +379,7 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -385,14 +403,14 @@ const COLOR_GAMUT_DESCRIPTIONS: Record<number, Array<QuerySegment>> = [
     },
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
   ],
   // [ true, true, true, false ],
   [
     {
       type: "feature",
-      value: "color-gamut",
+      value: feature,
     },
     {
       type: "comparison",
@@ -605,7 +623,9 @@ export const featurePairToEnglishQuerySegments = (
     p[0] === "device-width" ||
     p[0] === "height" ||
     p[0] === "width" ||
-    p[0] === "resolution"
+    p[0] === "resolution" ||
+    p[0] === "horizontal-viewport-segments" ||
+    p[0] === "vertical-viewport-segments"
   ) {
     const [minBoundsInclusive, minBounds, maxBounds, maxBoundsInclusive] =
       RANGE_NUMBER_FEATURES[p[0]].bounds;
@@ -847,19 +867,17 @@ export const featurePairToEnglishQuerySegments = (
             : `layout should update ${p[1] === "slow" ? "slowly" : "quickly"}`,
       },
     ];
-  } else if (p[0] === "color-gamut") {
+  } else if (p[0] === "color-gamut" || p[0] === "video-color-gamut") {
     // color-gamut
     const index =
       (p[1][3] ? 1 : 0) +
       (p[1][2] ? 2 : 0) +
       (p[1][1] ? 4 : 0) +
       (p[1][0] ? 8 : 0);
-
-    const segments = COLOR_GAMUT_DESCRIPTIONS[index];
+    const segments = asGamutDescriptions(p[0])[index];
     const shouldEnclose = segments.some(
       (child) => child.type === "bool-op" && child.value === "or"
     );
-
     return shouldEnclose
       ? [
           { type: "paren", value: "(" },
@@ -879,7 +897,7 @@ export const featurePairToEnglishQuerySegments = (
               }`,
       },
     ];
-  } else {
+  } else if (p[0] === "overflow-inline") {
     return [
       {
         type: "plain",
@@ -889,6 +907,133 @@ export const featurePairToEnglishQuerySegments = (
             : `can view horizontal overflow ${
                 p[1] === "scroll" ? "by scrolling" : "as pages"
               }`,
+      },
+    ];
+  } else if (p[0] === "display-mode") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "fullscreen"
+            ? "is fullscreen"
+            : p[1] === "standalone"
+            ? "is a native-looking application"
+            : p[1] === "minimal-ui"
+            ? "is a browser with reduced UI"
+            : "is a browser with full browser UI",
+      },
+    ];
+  } else if (p[0] === "dynamic-range" || p[0] === "video-dynamic-range") {
+    return [
+      {
+        type: "plain",
+        value: p[1] === "standard" ? "SDR" : "HDR",
+      },
+    ];
+  } else if (p[0] === "environment-blending") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "opaque"
+            ? "shown on opaque medium"
+            : p[1] === "additive"
+            ? "shown on additive medium"
+            : "shown on subtractive medium",
+      },
+    ];
+  } else if (p[0] === "forced-colors") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "none"
+            ? "no forced color palette"
+            : "user has forced a color palette",
+      },
+    ];
+  } else if (p[0] === "nav-controls") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "none"
+            ? "has no obvious back button"
+            : "has obvious back button",
+      },
+    ];
+  } else if (p[0] === "inverted-colors") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "none"
+            ? "screen has not inverted colors"
+            : "screen has inverted colors",
+      },
+    ];
+  } else if (p[0] === "scripting") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "none"
+            ? "JavaScript disabled"
+            : p[1] === "initial-only"
+            ? "JavaScript disabled after load"
+            : "JavaScript enabled",
+      },
+    ];
+  } else if (p[0] === "prefers-color-scheme") {
+    return [
+      {
+        type: "plain",
+        value: p[1] === "light" ? "prefers light mode" : "prefers dark mode",
+      },
+    ];
+  } else if (p[0] === "prefers-contrast") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "no-preference"
+            ? "no contrast preferences"
+            : p[1] === "less"
+            ? "prefers less contrast"
+            : p[1] === "more"
+            ? "prefers more contrast"
+            : "has custom contrast preferences",
+      },
+    ];
+  } else if (p[0] === "prefers-reduced-data") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "no-preference"
+            ? "no preference for reduced data"
+            : "prefers less data",
+      },
+    ];
+  } else if (p[0] === "prefers-reduced-motion") {
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "no-preference"
+            ? "no preference for reduced motion"
+            : "prefers less motion",
+      },
+    ];
+  } else {
+    /* if (p[0] === "prefers-reduced-transparency") */
+    return [
+      {
+        type: "plain",
+        value:
+          p[1] === "no-preference"
+            ? "no preference for reduced transparency"
+            : "prefers less transparency",
       },
     ];
   }

@@ -22,6 +22,26 @@ export type Environment = {
   monochromeBits: "not-monochrome" | Integer;
   colorIndex: "none" | Integer;
   dppx: Integer;
+  displayMode: "fullscreen" | "standalone" | "minimal-ui" | "browser";
+  dynamicRange: "not-hdr" | "hdr";
+  environmentBlending: "opaque" | "additive" | "subtractive";
+  forcedColors: "none" | "active";
+  invertedColors: "none" | "inverted";
+  navControls: "none" | "back";
+  prefersColorScheme: "no-preference" | "light" | "dark";
+  prefersContrast: "no-preference" | "less" | "more" | "custom";
+  prefersReducedData: "no-preference" | "reduce";
+  prefersReducedMotion: "no-preference" | "reduce";
+  prefersReducedTransparency: "no-preference" | "reduce";
+  scripting: "none" | "initial-only" | "enabled";
+  videoColorGamut:
+    | "not-srgb"
+    | "srgb-but-not-p3"
+    | "p3-but-not-rec2020"
+    | "rec2020";
+  videoDynamicRange: "not-hdr" | "hdr";
+  horizontalViewportSegments: Integer;
+  verticalViewportSegments: Integer;
 };
 
 type DefaultableFeatures =
@@ -38,7 +58,23 @@ type DefaultableFeatures =
   | "update"
   | "colorIndex"
   | "colorBits"
-  | "monochromeBits";
+  | "monochromeBits"
+  | "displayMode"
+  | "dynamicRange"
+  | "environmentBlending"
+  | "forcedColors"
+  | "invertedColors"
+  | "navControls"
+  | "prefersColorScheme"
+  | "prefersContrast"
+  | "prefersReducedData"
+  | "prefersReducedMotion"
+  | "prefersReducedTransparency"
+  | "scripting"
+  | "videoColorGamut"
+  | "videoDynamicRange"
+  | "horizontalViewportSegments"
+  | "verticalViewportSegments";
 
 export const DESKTOP_ENVIRONMENT: Pick<Environment, DefaultableFeatures> = {
   mediaType: "screen",
@@ -55,6 +91,22 @@ export const DESKTOP_ENVIRONMENT: Pick<Environment, DefaultableFeatures> = {
   colorIndex: "none",
   colorBits: 8,
   monochromeBits: "not-monochrome",
+  displayMode: "browser",
+  dynamicRange: "not-hdr",
+  environmentBlending: "opaque",
+  forcedColors: "none",
+  invertedColors: "none",
+  navControls: "back",
+  prefersColorScheme: "no-preference",
+  prefersContrast: "no-preference",
+  prefersReducedData: "no-preference",
+  prefersReducedMotion: "no-preference",
+  prefersReducedTransparency: "no-preference",
+  scripting: "enabled",
+  videoColorGamut: "srgb-but-not-p3",
+  videoDynamicRange: "not-hdr",
+  horizontalViewportSegments: 1,
+  verticalViewportSegments: 1,
 };
 
 const badInput = (key: string): Error => {
@@ -238,6 +290,19 @@ export const matches = (
           matches = false;
           break;
         }
+      } else if (k === "video-color-gamut") {
+        const [belowSrgb, srgbAndBelowP3, p3AndBelowRec2020, rec2020AndAbove] =
+          p[k];
+        if (
+          (env.videoColorGamut === "not-srgb" && !belowSrgb) ||
+          (env.videoColorGamut === "srgb-but-not-p3" && !srgbAndBelowP3) ||
+          (env.videoColorGamut === "p3-but-not-rec2020" &&
+            !p3AndBelowRec2020) ||
+          (env.videoColorGamut === "rec2020" && !rec2020AndAbove)
+        ) {
+          matches = false;
+          break;
+        }
       } else if (k === "overflow-block") {
         const v = p[k];
         if (v !== env.overflowBlock) {
@@ -259,6 +324,106 @@ export const matches = (
       } else if (k === "update") {
         const v = p[k];
         if (v !== env.update) {
+          matches = false;
+          break;
+        }
+      } else if (k === "scripting") {
+        const v = p[k];
+        if (v !== env.scripting) {
+          matches = false;
+          break;
+        }
+      } else if (k === "display-mode") {
+        const v = p[k];
+        if (v !== env.displayMode) {
+          matches = false;
+          break;
+        }
+      } else if (k === "environment-blending") {
+        const v = p[k];
+        if (v !== env.environmentBlending) {
+          matches = false;
+          break;
+        }
+      } else if (k === "forced-colors") {
+        const v = p[k];
+        if (v !== env.forcedColors) {
+          matches = false;
+          break;
+        }
+      } else if (k === "inverted-colors") {
+        const v = p[k];
+        if (v !== env.invertedColors) {
+          matches = false;
+          break;
+        }
+      } else if (k === "nav-controls") {
+        const v = p[k];
+        if (v !== env.navControls) {
+          matches = false;
+          break;
+        }
+      } else if (k === "prefers-color-scheme") {
+        const v = p[k];
+        if (v !== env.prefersColorScheme) {
+          matches = false;
+          break;
+        }
+      } else if (k === "prefers-contrast") {
+        const v = p[k];
+        if (v !== env.prefersContrast) {
+          matches = false;
+          break;
+        }
+      } else if (k === "prefers-reduced-data") {
+        const v = p[k];
+        if (v !== env.prefersReducedData) {
+          matches = false;
+          break;
+        }
+      } else if (k === "prefers-reduced-motion") {
+        const v = p[k];
+        if (v !== env.prefersReducedMotion) {
+          matches = false;
+          break;
+        }
+      } else if (k === "prefers-reduced-transparency") {
+        const v = p[k];
+        if (v !== env.prefersReducedTransparency) {
+          matches = false;
+          break;
+        }
+      } else if (k === "dynamic-range") {
+        const v = p[k];
+        if (v === "high" && env.dynamicRange === "not-hdr") {
+          matches = false;
+          break;
+        }
+      } else if (k === "video-dynamic-range") {
+        const v = p[k];
+        if (v === "high" && env.videoDynamicRange === "not-hdr") {
+          matches = false;
+          break;
+        }
+      } else if (k === "vertical-viewport-segments") {
+        const [minInclusive, min, max, maxInclusive] = p[k];
+        if (
+          env.verticalViewportSegments < min ||
+          env.verticalViewportSegments > max ||
+          (min === env.verticalViewportSegments && !minInclusive) ||
+          (max === env.verticalViewportSegments && !maxInclusive)
+        ) {
+          matches = false;
+          break;
+        }
+      } else if (k === "horizontal-viewport-segments") {
+        const [minInclusive, min, max, maxInclusive] = p[k];
+        if (
+          env.horizontalViewportSegments < min ||
+          env.horizontalViewportSegments > max ||
+          (min === env.horizontalViewportSegments && !minInclusive) ||
+          (max === env.horizontalViewportSegments && !maxInclusive)
+        ) {
           matches = false;
           break;
         }
@@ -384,6 +549,7 @@ export const matches = (
           break;
         }
       } else {
+        // "device-aspect-ratio"
         const [minInclusive, minRatio, maxRatio, maxInclusive] = p[k];
         const min = minRatio[0] / minRatio[1];
         const max = maxRatio[0] / maxRatio[1];

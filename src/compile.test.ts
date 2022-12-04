@@ -327,4 +327,14 @@ test("found bugs", () => {
     invalidFeatures: [],
     falseFeatures: [],
   });
+
+  expect(compileQuery("(prefers-color-scheme: dark)")).toEqual({
+    simplePerms: [
+      {
+        "prefers-color-scheme": "dark",
+      },
+    ],
+    invalidFeatures: [],
+    falseFeatures: [],
+  });
 });

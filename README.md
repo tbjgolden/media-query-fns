@@ -16,10 +16,10 @@ Functions to read media queries from a string/ast and:
 Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) which means:
 
 - [x] **parses any correct CSS media queries**
-- [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-4/
+- [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-5/ (as of 2022-12-04)
 - [x] **TypeScript friendly**
 - [x] **all valid queries parsed and interpreted, even newer syntax like
-      `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (monochrome))`**
+      `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (prefers-reduced-motion: reduce))`**
 
 ## Quickfire examples
 
@@ -41,7 +41,7 @@ console.log(matches(maxWidthQuery, testEnv(1280))); // false
 console.log(matches(maxWidthQuery, testEnv(1000))); // true
 
 const complexQuery = compileQuery(
-  `@media screen and (8 = color) and (orientation)`
+  `@media screen and (monochrome) and (orientation)`
 );
 console.log(matches(complexQuery, testEnv()));
 // true
@@ -49,13 +49,13 @@ console.log(matches(complexQuery, testEnv()));
 console.log(toEnglishString(maxWidthQuery));
 // 'if width ≤ 1200px'
 console.log(toEnglishString(complexQuery));
-// 'if (is screen AND color = 24-bit)'
-// note: (orientation) is always true, so it's removed for brevity
+// 'if (is screen AND monochrome)'
+// note: (orientation) without "landscape" or "portrait" is always true, so it's removed for brevity
 ```
 
 ## Considerations & Caveats
 
-This library doesn't support calc because it [follows the spec](https://www.w3.org/TR/mediaqueries-4/#ref-for-media-feature%E2%91%A0%E2%93%AA).
+This library doesn't support calc because it [follows the spec](https://www.w3.org/TR/mediaqueries-5/#ref-for-media-feature%E2%91%A0%E2%93%AA).
 
 Many browsers do support calc to some extent, but they probably shouldn't as it opens up a Pandora's box of nasty edge cases that would lead to browser inconsistencies (without a spec to unify them, anyway).
 
