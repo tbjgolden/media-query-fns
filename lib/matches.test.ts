@@ -12,12 +12,6 @@ const DEFAULT_DIMENSIONS = {
 
 const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
   const compiled = compileQuery(query);
-  // console.log(
-  //   util.inspect(compiled, {
-  //     depth: 10,
-  //     colors: true,
-  //   })
-  // );
   return matches(compiled, {
     ...DEFAULT_DIMENSIONS,
     ...diffs,
@@ -49,8 +43,8 @@ test("matches media-type", () => {
   expect(check("not all and (width < 1px)")).toBe(true);
   expect(check("tty")).toBe(false);
   expect(check("not tty")).toBe(true);
-  expect(() => check("randomtext")).toThrow();
-  expect(() => check("not randomtext")).toThrow();
+  expect(check("randomtext")).toBe(false);
+  expect(check("not randomtext")).toBe(false);
   expect(check("screen")).toBe(true);
   expect(check("print")).toBe(false);
   expect(check("not screen")).toBe(false);

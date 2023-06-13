@@ -399,7 +399,11 @@ export const compileQuery = (
   units: Partial<UnitConversions> = {}
 ): EvaluateResult => {
   const mediaQueryList = parseMediaQueryList(query);
-  return isParserError(mediaQueryList)
-    ? { simplePerms: [], invalidFeatures: [], falseFeatures: [] }
-    : compileAST(mediaQueryList, units);
+  if (isParserError(mediaQueryList)) {
+    throw new Error(
+      `Error parsing media query list: ${mediaQueryList.errid} at chars ${mediaQueryList.start}:${mediaQueryList.end}`
+    );
+  } else {
+    return compileAST(mediaQueryList, units);
+  }
 };
