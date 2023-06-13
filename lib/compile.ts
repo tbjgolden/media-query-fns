@@ -1,4 +1,10 @@
-import { toAST, AST, MediaCondition, MediaFeature } from "media-query-parser";
+import {
+  MediaCondition,
+  MediaFeature,
+  MediaQueryList,
+  isParserError,
+  parseMediaQueryList,
+} from "media-query-parser";
 import {
   Perm,
   MediaFeatures,
@@ -17,7 +23,7 @@ import {
   notNumberRange,
   ConditionPair,
   boundRange,
-} from "./helpers";
+} from "./helpers.js";
 import {
   CompiledUnitConversions,
   compileStaticUnitConversions,
@@ -25,7 +31,7 @@ import {
   getValue,
   simplifyMediaFeature,
   UnitConversions,
-} from "./units";
+} from "./units.js";
 
 export type SimplePerm = Partial<
   MediaFeatures & {
@@ -93,10 +99,7 @@ export const mergePerms = (a: Perm, b: Perm): Perm => {
               qq[p[0]][3] && p[1][3],
             ];
           } else {
-            attachPair(qq, [
-              p[0],
-              qq[p[0]] === p[1] ? qq[p[0]] : "{false}",
-            ] as ConditionPair);
+            attachPair(qq, [p[0], qq[p[0]] === p[1] ? qq[p[0]] : "{false}"] as ConditionPair);
           }
         }
       }
@@ -110,9 +113,12 @@ export const mergePerms = (a: Perm, b: Perm): Perm => {
 
 export const notPerms = (conditionSets: Perm[]): Perm[] => {
   // !(a || b) = !a && !b
-  return conditionSets
-    .map((conditionSet) => invertPerm(conditionSet))
-    .reduce((a: Perm[], b: Perm[]) => andPerms(a, b));
+  return (
+    conditionSets
+      .map((conditionSet) => invertPerm(conditionSet))
+      // eslint-disable-next-line unicorn/no-array-reduce
+      .reduce((a: Perm[], b: Perm[]) => andPerms(a, b))
+  );
 };
 
 export const invertPerm = (set: Perm): Perm[] => {
@@ -186,9 +192,9 @@ export const mediaFeatureToPerms = (
     } else if (isDiscreteKey(feature.name)) {
       return invertPerm({ [feature.name]: "none" });
     } else if (isRangeRatioKey(feature.name)) {
-      return [{ [feature.name]: [false, [0, 1], [Infinity, 1], true] }];
+      return [{ [feature.name]: [false, [0, 1], [Number.POSITIVE_INFINITY, 1], true] }];
     } else {
-      return [{ [feature.name]: [false, 0, Infinity, true] }];
+      return [{ [feature.name]: [false, 0, Number.POSITIVE_INFINITY, true] }];
     }
   } else if (isDiscreteKey(feature.name)) {
     if (feature.type === "equals") {
@@ -197,16 +203,11 @@ export const mediaFeatureToPerms = (
         if (unit.type === "number" && (unit.value === 0 || unit.value === 1)) {
           return [{ grid: unit.value }];
         }
-      } else if (
-        unit.type === "ident" &&
-        unit.value in DISCRETE_FEATURES[feature.name]
-      ) {
+      } else if (unit.type === "ident" && unit.value in DISCRETE_FEATURES[feature.name]) {
         if (feature.name === "color-gamut") {
           const index = ["srgb", "p3", "rec2020"].indexOf(unit.value);
           if (index !== -1) {
-            return [
-              { "color-gamut": [false, index <= 0, index <= 1, index <= 2] },
-            ];
+            return [{ "color-gamut": [false, index <= 0, index <= 1, index <= 2] }];
           }
         } else {
           return [{ [feature.name]: unit.value }];
@@ -225,29 +226,20 @@ export const mediaFeatureToPerms = (
     } else if (feature.type === "single") {
       const ratio = getRatio(feature.value);
       if (ratio !== null) {
-        if (feature.op === "<") range = [true, [-Infinity, 1], ratio, false];
-        else if (feature.op === "<=")
-          range = [true, [-Infinity, 1], ratio, true];
-        else if (feature.op === ">")
-          range = [false, ratio, [Infinity, 1], true];
-        else range = [true, ratio, [Infinity, 1], true];
+        if (feature.op === "<") range = [true, [Number.NEGATIVE_INFINITY, 1], ratio, false];
+        else if (feature.op === "<=") range = [true, [Number.NEGATIVE_INFINITY, 1], ratio, true];
+        else if (feature.op === ">") range = [false, ratio, [Number.POSITIVE_INFINITY, 1], true];
+        else range = [true, ratio, [Number.POSITIVE_INFINITY, 1], true];
       }
     } else if (feature.type === "double") {
       const minRatio = getRatio(feature.min);
       const maxRatio = getRatio(feature.max);
       if (minRatio !== null && maxRatio !== null) {
-        range = [
-          feature.minOp === "<=",
-          minRatio,
-          maxRatio,
-          feature.maxOp === "<=",
-        ];
+        range = [feature.minOp === "<=", minRatio, maxRatio, feature.maxOp === "<="];
       }
     }
 
-    return range === null
-      ? INVALID
-      : [{ [feature.name]: boundRange([feature.name, range]) }];
+    return range === null ? INVALID : [{ [feature.name]: boundRange([feature.name, range]) }];
   } else {
     let range: ConditionRange | null = null;
 
@@ -257,27 +249,20 @@ export const mediaFeatureToPerms = (
     } else if (feature.type === "single") {
       const value = getValue(feature.value, feature.name);
       if (value !== null) {
-        if (feature.op === "<") range = [true, -Infinity, value, false];
-        else if (feature.op === "<=") range = [true, -Infinity, value, true];
-        else if (feature.op === ">") range = [false, value, Infinity, true];
-        else range = [true, value, Infinity, true];
+        if (feature.op === "<") range = [true, Number.NEGATIVE_INFINITY, value, false];
+        else if (feature.op === "<=") range = [true, Number.NEGATIVE_INFINITY, value, true];
+        else if (feature.op === ">") range = [false, value, Number.POSITIVE_INFINITY, true];
+        else range = [true, value, Number.POSITIVE_INFINITY, true];
       }
     } else if (feature.type === "double") {
       const minValue = getValue(feature.min, feature.name);
       const maxValue = getValue(feature.max, feature.name);
       if (minValue !== null && maxValue !== null) {
-        range = [
-          feature.minOp === "<=",
-          minValue,
-          maxValue,
-          feature.maxOp === "<=",
-        ];
+        range = [feature.minOp === "<=", minValue, maxValue, feature.maxOp === "<="];
       }
     }
 
-    return range === null
-      ? INVALID
-      : [{ [feature.name]: boundRange([feature.name, range]) }];
+    return range === null ? INVALID : [{ [feature.name]: boundRange([feature.name, range]) }];
   }
 };
 
@@ -293,9 +278,10 @@ export const mediaConditionToPerms = (
       conditionSetsSets.push(mediaConditionToPerms(child, unitConversions));
     }
   }
-  if (mediaCondition.operator === "or" || mediaCondition.operator === null) {
+  if (mediaCondition.operator === "or" || mediaCondition.operator === undefined) {
     return conditionSetsSets.flat();
   } else if (mediaCondition.operator === "and") {
+    // eslint-disable-next-line unicorn/no-array-reduce
     return conditionSetsSets.reduce((a, b) => andPerms(a, b));
   } else {
     return notPerms(conditionSetsSets[0]);
@@ -309,13 +295,11 @@ export const simplifyPerms = (perms: Perm[]): EvaluateResult => {
 
   for (const perm of perms) {
     let isUnmatchable = false;
-    if (Array.isArray(perm["invalid-features"])) {
-      if (perm["invalid-features"].length > 0) {
-        for (const invalidFeature of perm["invalid-features"]) {
-          invalidFeatures.add(invalidFeature);
-        }
-        isUnmatchable = true;
+    if (Array.isArray(perm["invalid-features"]) && perm["invalid-features"].length > 0) {
+      for (const invalidFeature of perm["invalid-features"]) {
+        invalidFeatures.add(invalidFeature);
       }
+      isUnmatchable = true;
     }
 
     const simplePerm: SimplePerm = {};
@@ -363,15 +347,15 @@ export const simplifyPerms = (perms: Perm[]): EvaluateResult => {
 };
 
 export const compileAST = (
-  ast: AST,
+  mediaQueryList: MediaQueryList,
   units: Partial<UnitConversions> = {}
 ): EvaluateResult => {
   const unitConversions = compileStaticUnitConversions(units);
   const allConditions: Perm[] = [];
 
-  for (const mediaQuery of ast) {
+  for (const mediaQuery of mediaQueryList.mediaQueries) {
     const extraConditions: Perm[] = [];
-    if (mediaQuery.mediaPrefix === "not") {
+    if (mediaQuery.prefix === "not") {
       if (mediaQuery.mediaType === "print") {
         extraConditions.push({
           "media-type": "not-print",
@@ -382,27 +366,24 @@ export const compileAST = (
         });
       }
 
-      if (mediaQuery.mediaCondition !== null) {
+      if (mediaQuery.mediaCondition !== undefined) {
         extraConditions.push(
-          ...notPerms(
-            mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions)
-          )
+          ...notPerms(mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions))
         );
       }
     } else {
-      if (mediaQuery.mediaCondition === null) {
+      if (mediaQuery.mediaCondition === undefined) {
         extraConditions.push({
           "media-type": mediaQuery.mediaType,
         });
       } else {
         extraConditions.push(
-          ...mediaConditionToPerms(
-            mediaQuery.mediaCondition,
-            unitConversions
-          ).map((conditionSet) => ({
-            ...conditionSet,
-            "media-type": mediaQuery.mediaType,
-          }))
+          ...mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions).map(
+            (conditionSet) => ({
+              ...conditionSet,
+              "media-type": mediaQuery.mediaType,
+            })
+          )
         );
       }
     }
@@ -416,4 +397,13 @@ export const compileAST = (
 export const compileQuery = (
   query: string,
   units: Partial<UnitConversions> = {}
-): EvaluateResult => compileAST(toAST(query), units);
+): EvaluateResult => {
+  const mediaQueryList = parseMediaQueryList(query);
+  if (isParserError(mediaQueryList)) {
+    throw new Error(
+      `Error parsing media query list: ${mediaQueryList.errid} at chars ${mediaQueryList.start}:${mediaQueryList.end}`
+    );
+  } else {
+    return compileAST(mediaQueryList, units);
+  }
+};

@@ -1,4 +1,5 @@
-import { EvaluateResult } from "./compile";
+/* eslint-disable security/detect-object-injection */
+import { EvaluateResult } from "./compile.js";
 
 type Integer = number;
 
@@ -34,11 +35,7 @@ export type Environment = {
   prefersReducedMotion: "no-preference" | "reduce";
   prefersReducedTransparency: "no-preference" | "reduce";
   scripting: "none" | "initial-only" | "enabled";
-  videoColorGamut:
-    | "not-srgb"
-    | "srgb-but-not-p3"
-    | "p3-but-not-rec2020"
-    | "rec2020";
+  videoColorGamut: "not-srgb" | "srgb-but-not-p3" | "p3-but-not-rec2020" | "rec2020";
   videoDynamicRange: "not-hdr" | "hdr";
   horizontalViewportSegments: Integer;
   verticalViewportSegments: Integer;
@@ -124,11 +121,7 @@ export const validateEnv = (env: Environment) => {
   if (env.anyHover !== "none" && env.anyHover !== "hover") {
     throw badInput("anyHover");
   }
-  if (
-    env.anyPointer !== "none" &&
-    env.anyPointer !== "coarse" &&
-    env.anyPointer !== "fine"
-  ) {
+  if (env.anyPointer !== "none" && env.anyPointer !== "coarse" && env.anyPointer !== "fine") {
     throw badInput("anyPointer");
   }
   if (
@@ -155,11 +148,7 @@ export const validateEnv = (env: Environment) => {
   if (env.overflowInline !== "none" && env.overflowInline !== "scroll") {
     throw badInput("overflowInline");
   }
-  if (
-    env.pointer !== "none" &&
-    env.pointer !== "coarse" &&
-    env.pointer !== "fine"
-  ) {
+  if (env.pointer !== "none" && env.pointer !== "coarse" && env.pointer !== "fine") {
     throw badInput("pointer");
   }
   if (env.scan !== "interlace" && env.scan !== "progressive") {
@@ -192,10 +181,7 @@ export const validateEnv = (env: Environment) => {
   ) {
     throw badInput("monochromeBits");
   }
-  if (
-    env.colorIndex !== "none" &&
-    !(Number.isInteger(env.colorIndex) && env.colorIndex >= 0)
-  ) {
+  if (env.colorIndex !== "none" && !(Number.isInteger(env.colorIndex) && env.colorIndex >= 0)) {
     throw badInput("colorIndex");
   }
 };
@@ -219,18 +205,12 @@ export const matches = (
       if (k === "media-type") {
         const v = p[k];
         if (v === "print") {
-          if (
-            env.mediaType === "screen" ||
-            env.mediaType === "not-screen-or-print"
-          ) {
+          if (env.mediaType === "screen" || env.mediaType === "not-screen-or-print") {
             matches = false;
             break;
           }
         } else if (v === "screen") {
-          if (
-            env.mediaType === "print" ||
-            env.mediaType === "not-screen-or-print"
-          ) {
+          if (env.mediaType === "print" || env.mediaType === "not-screen-or-print") {
             matches = false;
             break;
           }
@@ -271,16 +251,12 @@ export const matches = (
         }
       } else if (k === "grid") {
         const v = p[k];
-        if (
-          (v === 0 && env.grid === "grid") ||
-          (v === 1 && env.grid === "bitmap")
-        ) {
+        if ((v === 0 && env.grid === "grid") || (v === 1 && env.grid === "bitmap")) {
           matches = false;
           break;
         }
       } else if (k === "color-gamut") {
-        const [belowSrgb, srgbAndBelowP3, p3AndBelowRec2020, rec2020AndAbove] =
-          p[k];
+        const [belowSrgb, srgbAndBelowP3, p3AndBelowRec2020, rec2020AndAbove] = p[k];
         if (
           (env.colorGamut === "not-srgb" && !belowSrgb) ||
           (env.colorGamut === "srgb-but-not-p3" && !srgbAndBelowP3) ||
@@ -291,13 +267,11 @@ export const matches = (
           break;
         }
       } else if (k === "video-color-gamut") {
-        const [belowSrgb, srgbAndBelowP3, p3AndBelowRec2020, rec2020AndAbove] =
-          p[k];
+        const [belowSrgb, srgbAndBelowP3, p3AndBelowRec2020, rec2020AndAbove] = p[k];
         if (
           (env.videoColorGamut === "not-srgb" && !belowSrgb) ||
           (env.videoColorGamut === "srgb-but-not-p3" && !srgbAndBelowP3) ||
-          (env.videoColorGamut === "p3-but-not-rec2020" &&
-            !p3AndBelowRec2020) ||
+          (env.videoColorGamut === "p3-but-not-rec2020" && !p3AndBelowRec2020) ||
           (env.videoColorGamut === "rec2020" && !rec2020AndAbove)
         ) {
           matches = false;
@@ -485,16 +459,10 @@ export const matches = (
       } else if (k === "monochrome") {
         const [minInclusive, min, max, maxInclusive] = p[k];
         if (env.monochromeBits === "not-monochrome") {
-          if (
-            min > 0 ||
-            (min === 0 && !minInclusive) ||
-            (max === 0 && !maxInclusive)
-          ) {
+          if (min > 0 || (min === 0 && !minInclusive) || (max === 0 && !maxInclusive)) {
             matches = false;
-            break;
           }
-        }
-        if (
+        } else if (
           env.monochromeBits < min ||
           env.monochromeBits > max ||
           (min === env.monochromeBits && !minInclusive) ||
@@ -517,11 +485,7 @@ export const matches = (
       } else if (k === "color-index") {
         const [minInclusive, min, max, maxInclusive] = p[k];
         if (env.colorIndex === "none") {
-          if (
-            min > 0 ||
-            (min === 0 && !minInclusive) ||
-            (max === 0 && !maxInclusive)
-          ) {
+          if (min > 0 || (min === 0 && !minInclusive) || (max === 0 && !maxInclusive)) {
             matches = false;
             break;
           }
