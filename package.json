@@ -1,11 +1,13 @@
 {
   "name": "media-query-fns",
   "description": "Useful functions for working with CSS media queries in JS/TS",
-  "version": "3.0.0-beta.1",
+  "version": "1.5.0",
   "license": "MIT",
   "keywords": [
     "media",
     "query",
+    "functions",
+    "tools",
     "parser",
     "compiler",
     "token",
@@ -56,7 +58,7 @@
     "simple-git-hooks": "^2.8.1",
     "terser": "^5.17.7",
     "typescript": ">=5.0.4",
-    "xnr": "^1.1.2"
+    "xnr": "^1.1.3"
   },
   "files": [
     "dist"

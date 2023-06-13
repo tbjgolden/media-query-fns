@@ -1,4 +1,10 @@
-import { toAST, AST, MediaCondition, MediaFeature } from "media-query-parser";
+import {
+  MediaCondition,
+  MediaFeature,
+  MediaQueryList,
+  isParserError,
+  parseMediaQueryList,
+} from "media-query-parser";
 import {
   Perm,
   MediaFeatures,
@@ -107,9 +113,12 @@ export const mergePerms = (a: Perm, b: Perm): Perm => {
 
 export const notPerms = (conditionSets: Perm[]): Perm[] => {
   // !(a || b) = !a && !b
-  return conditionSets
-    .map((conditionSet) => invertPerm(conditionSet))
-    .reduce((a: Perm[], b: Perm[]) => andPerms(a, b));
+  return (
+    conditionSets
+      .map((conditionSet) => invertPerm(conditionSet))
+      // eslint-disable-next-line unicorn/no-array-reduce
+      .reduce((a: Perm[], b: Perm[]) => andPerms(a, b))
+  );
 };
 
 export const invertPerm = (set: Perm): Perm[] => {
@@ -269,9 +278,10 @@ export const mediaConditionToPerms = (
       conditionSetsSets.push(mediaConditionToPerms(child, unitConversions));
     }
   }
-  if (mediaCondition.operator === "or" || mediaCondition.operator === null) {
+  if (mediaCondition.operator === "or" || mediaCondition.operator === undefined) {
     return conditionSetsSets.flat();
   } else if (mediaCondition.operator === "and") {
+    // eslint-disable-next-line unicorn/no-array-reduce
     return conditionSetsSets.reduce((a, b) => andPerms(a, b));
   } else {
     return notPerms(conditionSetsSets[0]);
@@ -336,13 +346,16 @@ export const simplifyPerms = (perms: Perm[]): EvaluateResult => {
   };
 };
 
-export const compileAST = (ast: AST, units: Partial<UnitConversions> = {}): EvaluateResult => {
+export const compileAST = (
+  mediaQueryList: MediaQueryList,
+  units: Partial<UnitConversions> = {}
+): EvaluateResult => {
   const unitConversions = compileStaticUnitConversions(units);
   const allConditions: Perm[] = [];
 
-  for (const mediaQuery of ast) {
+  for (const mediaQuery of mediaQueryList.mediaQueries) {
     const extraConditions: Perm[] = [];
-    if (mediaQuery.mediaPrefix === "not") {
+    if (mediaQuery.prefix === "not") {
       if (mediaQuery.mediaType === "print") {
         extraConditions.push({
           "media-type": "not-print",
@@ -353,13 +366,13 @@ export const compileAST = (ast: AST, units: Partial<UnitConversions> = {}): Eval
         });
       }
 
-      if (mediaQuery.mediaCondition !== null) {
+      if (mediaQuery.mediaCondition !== undefined) {
         extraConditions.push(
           ...notPerms(mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions))
         );
       }
     } else {
-      if (mediaQuery.mediaCondition === null) {
+      if (mediaQuery.mediaCondition === undefined) {
         extraConditions.push({
           "media-type": mediaQuery.mediaType,
         });
@@ -381,5 +394,12 @@ export const compileAST = (ast: AST, units: Partial<UnitConversions> = {}): Eval
   return simplifyPerms(allConditions);
 };
 
-export const compileQuery = (query: string, units: Partial<UnitConversions> = {}): EvaluateResult =>
-  compileAST(toAST(query), units);
+export const compileQuery = (
+  query: string,
+  units: Partial<UnitConversions> = {}
+): EvaluateResult => {
+  const mediaQueryList = parseMediaQueryList(query);
+  return isParserError(mediaQueryList)
+    ? { simplePerms: [], invalidFeatures: [], falseFeatures: [] }
+    : compileAST(mediaQueryList, units);
+};

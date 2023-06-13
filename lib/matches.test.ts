@@ -10,21 +10,21 @@ const DEFAULT_DIMENSIONS = {
   deviceHeightPx: 800,
 };
 
-test("matches width", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
+const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
+  const compiled = compileQuery(query);
+  // console.log(
+  //   util.inspect(compiled, {
+  //     depth: 10,
+  //     colors: true,
+  //   })
+  // );
+  return matches(compiled, {
+    ...DEFAULT_DIMENSIONS,
+    ...diffs,
+  });
+};
 
+test("matches width", () => {
   expect(check("(width: 1280px)")).toBe(true);
   expect(check("(max-width: 1400px)")).toBe(true);
   expect(check("(min-width: 1000px)")).toBe(true);
@@ -43,20 +43,6 @@ test("matches width", () => {
 });
 
 test("matches media-type", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("all")).toBe(true);
   expect(check("not all")).toBe(false);
   expect(check("not all and (width > 1px)")).toBe(false);
@@ -82,20 +68,6 @@ test("matches media-type", () => {
 });
 
 test("matches resolution", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(resolution)")).toBe(true);
   expect(check("not (resolution)")).toBe(false);
   expect(check("(max-resolution: 128dpi)")).toBe(false);
@@ -111,20 +83,6 @@ test("matches resolution", () => {
 });
 
 test("matches hover", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(hover)")).toBe(true);
   expect(check("not (hover)")).toBe(false);
   expect(check("(hover: none)")).toBe(false);
@@ -137,20 +95,6 @@ test("matches hover", () => {
 });
 
 test("matches pointer", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(pointer)")).toBe(true);
   expect(check("not (pointer)")).toBe(false);
   expect(check("(pointer: none)")).toBe(false);
@@ -177,20 +121,6 @@ test("matches pointer", () => {
 });
 
 test("matches color-gamut", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   const gamutSrgb = { colorGamut: "srgb-but-not-p3" } as const;
   expect(check("(color-gamut)", gamutSrgb)).toBe(true);
   expect(check("not (color-gamut)", gamutSrgb)).toBe(false);
@@ -218,20 +148,6 @@ test("matches color-gamut", () => {
 });
 
 test("matches grid", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(grid: 0)")).toBe(true);
   expect(check("(grid: 1)")).toBe(false);
   expect(check("(grid)")).toBe(false);
@@ -244,20 +160,6 @@ test("matches grid", () => {
 });
 
 test("matches orientation", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(orientation)")).toBe(true);
   expect(check("not (orientation)")).toBe(false);
   expect(check("(orientation: landscape)")).toBe(true);
@@ -275,20 +177,6 @@ test("matches orientation", () => {
 });
 
 test("matches aspect-ratio", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(aspect-ratio: 1/1)")).toBe(false);
   expect(check("(max-aspect-ratio: 2/1)")).toBe(true);
   expect(check("(min-aspect-ratio: 1/2)")).toBe(true);
@@ -306,20 +194,6 @@ test("matches aspect-ratio", () => {
 });
 
 test("matches color-index", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(color-index > 128)")).toBe(false);
   expect(check("(color-index: 128)")).toBe(false);
   expect(check("(color-index < 129)")).toBe(true);
@@ -332,20 +206,6 @@ test("matches color-index", () => {
 });
 
 test("matches monochrome", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(monochrome > 2)")).toBe(false);
   expect(check("(monochrome: 2)")).toBe(false);
   expect(check("(monochrome < 2)")).toBe(true);
@@ -367,20 +227,6 @@ test("matches monochrome", () => {
 });
 
 test("matches others", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   expect(check("(any-hover)")).toBe(true);
   expect(check("(any-hover: none)")).toBe(false);
   expect(check("(any-hover: hover)")).toBe(true);
@@ -428,20 +274,6 @@ test("matches others", () => {
 });
 
 test("found bugs", () => {
-  const check = (query: string, diffs: Partial<Environment> = {}): boolean => {
-    const compiled = compileQuery(query);
-    // console.log(
-    //   util.inspect(compiled, {
-    //     depth: 10,
-    //     colors: true,
-    //   })
-    // );
-    return matches(compiled, {
-      ...DEFAULT_DIMENSIONS,
-      ...diffs,
-    });
-  };
-
   // "not screen and (min-width: 1000px) and (orientation: landscape)"
   // "not (screen and (min-width: 1000px) and (orientation: landscape))"
   // "(not-screen or (width < 1000px) or (aspect-ratio < 1/1))"

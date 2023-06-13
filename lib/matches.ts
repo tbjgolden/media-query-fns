@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-object-injection */
 import { EvaluateResult } from "./compile.js";
 
 type Integer = number;
@@ -457,14 +458,11 @@ export const matches = (
         }
       } else if (k === "monochrome") {
         const [minInclusive, min, max, maxInclusive] = p[k];
-        if (
-          env.monochromeBits === "not-monochrome" &&
-          (min > 0 || (min === 0 && !minInclusive) || (max === 0 && !maxInclusive))
-        ) {
-          matches = false;
-          break;
-        }
-        if (
+        if (env.monochromeBits === "not-monochrome") {
+          if (min > 0 || (min === 0 && !minInclusive) || (max === 0 && !maxInclusive)) {
+            matches = false;
+          }
+        } else if (
           env.monochromeBits < min ||
           env.monochromeBits > max ||
           (min === env.monochromeBits && !minInclusive) ||
