@@ -25,15 +25,12 @@ if (await isDirectory("lib")) {
     console.log(`entrypoint file "${entrypoint}" doesn't exist`);
     process.exit(1);
   }
-  const { parseMediaQuery } = await import(process.cwd() + "/" + entrypoint);
-  const result = JSON.stringify(parseMediaQuery("(monochrome)"));
-  const expected = JSON.stringify({
-    type: "query",
-    mediaCondition: {
-      type: "condition",
-      children: [{ type: "feature", context: "boolean", feature: "monochrome" }],
-    },
-  });
+  const { compileQuery, toEnglishString } = await import(process.cwd() + "/" + entrypoint);
+
+  const maxWidthQuery = compileQuery(`(max-width: 1200px)`);
+
+  const result = JSON.stringify(toEnglishString(maxWidthQuery));
+  const expected = JSON.stringify("if width ≤ 1200px");
   if (result !== expected) {
     console.log("expected:");
     console.log(expected);

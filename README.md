@@ -28,7 +28,7 @@ Supports JavaScript + TypeScript:
 import { compileQuery, matches, toEnglishString } from "media-query-fns";
 
 // returns data that can be used to interpret the query
-const maxWidthQuery = compileQuery(`@media (max-width: 1200px)`);
+const maxWidthQuery = compileQuery(`(max-width: 1200px)`);
 // (throws if invalid query syntax)
 
 const testEnv = (widthPx = 1280, heightPx = 800) => ({
@@ -41,7 +41,7 @@ const testEnv = (widthPx = 1280, heightPx = 800) => ({
 console.log(matches(maxWidthQuery, testEnv(1280))); // false
 console.log(matches(maxWidthQuery, testEnv(1000))); // true
 
-const complexQuery = compileQuery(`@media screen and (monochrome) and (orientation)`);
+const complexQuery = compileQuery(`screen and (monochrome) and (orientation)`);
 console.log(matches(complexQuery, testEnv()));
 // true
 
