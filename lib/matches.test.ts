@@ -1,5 +1,5 @@
-import { compileQuery } from "./compile";
-import { Environment, matches } from "./matches";
+import { compileQuery } from "./compile.js";
+import { Environment, matches } from "./matches.js";
 // import util from "util";
 
 const DEFAULT_DIMENSIONS = {
@@ -424,9 +424,7 @@ test("matches others", () => {
   expect(check("(device-height: 800px)")).toBe(true);
   expect(check("(max-device-height: 1000px)")).toBe(true);
   expect(check("(min-device-height: 1000px)")).toBe(false);
-  expect(() =>
-    check("not screen and ((not (update: none)) and (monochrome))")
-  ).not.toThrow();
+  expect(() => check("not screen and ((not (update: none)) and (monochrome))")).not.toThrow();
 });
 
 test("found bugs", () => {

@@ -12,7 +12,7 @@ import {
   RangeFeatures,
   RangeNumberFeatures,
   RANGE_NUMBER_FEATURES,
-} from "./helpers";
+} from "./helpers.js";
 
 export type LengthUnit = {
   type: "dimension";
@@ -66,12 +66,7 @@ export type UnitConversions = {
   // = 100vh
   heightPx: number;
   // used to determine vi and vb
-  writingMode:
-    | "horizontal-tb"
-    | "vertical-rl"
-    | "vertical-lr"
-    | "sideways-rl"
-    | "sideways-lr";
+  writingMode: "horizontal-tb" | "vertical-rl" | "vertical-lr" | "sideways-rl" | "sideways-lr";
   // also used for rem
   emPx: number;
   // also used for rlh
@@ -136,21 +131,25 @@ export const convertToUnit = (
     let unitType: "length" | "time" | "frequency" | "resolution";
     switch (token.unit) {
       case "s":
-      case "ms":
+      case "ms": {
         unitType = "time";
         break;
+      }
       case "hz":
-      case "khz":
+      case "khz": {
         unitType = "frequency";
         break;
+      }
       case "dpi":
       case "dpcm":
       case "dppx":
-      case "x":
+      case "x": {
         unitType = "resolution";
         break;
-      default:
+      }
+      default: {
         unitType = "length";
+      }
     }
 
     if (token.unit === "px") {
@@ -174,9 +173,9 @@ export const convertToUnit = (
     } else if (unitType === "resolution") {
       let dppx = token.value;
       if (token.unit === "dpi") {
-        dppx = parseFloat((token.value * 0.0104166667).toFixed(3));
+        dppx = Number.parseFloat((token.value * 0.0104166667).toFixed(3));
       } else if (token.unit === "dpcm") {
-        dppx = parseFloat((token.value * 0.0264583333).toFixed(3));
+        dppx = Number.parseFloat((token.value * 0.0264583333).toFixed(3));
       }
       return {
         type: "dimension",
@@ -185,12 +184,11 @@ export const convertToUnit = (
       };
     } else {
       if (token.unit in unitConversions) {
-        const factor =
-          unitConversions[token.unit as keyof CompiledUnitConversions];
+        const factor = unitConversions[token.unit as keyof CompiledUnitConversions];
         return {
           type: "dimension",
           subtype: "length",
-          px: parseFloat((token.value * factor).toFixed(3)),
+          px: Number.parseFloat((token.value * factor).toFixed(3)),
         };
       } else {
         return {
@@ -224,9 +222,7 @@ export const compileStaticUnitConversions = (
 ): CompiledUnitConversions => {
   // increasing emPx should also increase other units,
   // but any units passed in override these defaults
-  let impliedUnits: Partial<
-    Pick<UnitConversions, "exPx" | "chPx" | "capPx" | "icPx">
-  > = {};
+  let impliedUnits: Partial<Pick<UnitConversions, "exPx" | "chPx" | "capPx" | "icPx">> = {};
   if (typeof units.emPx === "number") {
     impliedUnits = {
       exPx: Math.round(units.emPx * 0.5),
@@ -345,22 +341,7 @@ export const simplifyMediaFeature = (
             max: convertToUnit(range.leftToken, unitConversions),
           };
         }
-      } else if (range.rightToken !== null) {
-        if (range.rightOp === "=") {
-          return {
-            type: "equals",
-            name: feature,
-            value: convertToUnit(range.rightToken, unitConversions),
-          };
-        } else {
-          return {
-            type: "single",
-            name: feature,
-            op: range.rightOp,
-            value: convertToUnit(range.rightToken, unitConversions),
-          };
-        }
-      } else {
+      } else if (range.rightToken === null) {
         if (range.leftOp === "=") {
           return {
             type: "equals",
@@ -375,35 +356,48 @@ export const simplifyMediaFeature = (
             value: convertToUnit(range.leftToken, unitConversions),
           };
         }
+      } else {
+        if (range.rightOp === "=") {
+          return {
+            type: "equals",
+            name: feature,
+            value: convertToUnit(range.rightToken, unitConversions),
+          };
+        } else {
+          return {
+            type: "single",
+            name: feature,
+            op: range.rightOp,
+            value: convertToUnit(range.rightToken, unitConversions),
+          };
+        }
       }
     }
   } else if (mediaFeature.context === "value") {
     if (feature === "orientation") {
-      if (mediaFeature.prefix === null) {
-        if (mediaFeature.value.type === "<ident-token>") {
-          if (mediaFeature.value.value === "portrait") {
-            return {
-              type: "single",
-              name: "aspect-ratio",
-              op: "<=",
-              value: {
-                type: "ratio",
-                numerator: 1,
-                denominator: 1,
-              },
-            };
-          } else if (mediaFeature.value.value === "landscape") {
-            return {
-              type: "single",
-              name: "aspect-ratio",
-              op: ">=",
-              value: {
-                type: "ratio",
-                numerator: 1,
-                denominator: 1,
-              },
-            };
-          }
+      if (mediaFeature.prefix === null && mediaFeature.value.type === "<ident-token>") {
+        if (mediaFeature.value.value === "portrait") {
+          return {
+            type: "single",
+            name: "aspect-ratio",
+            op: "<=",
+            value: {
+              type: "ratio",
+              numerator: 1,
+              denominator: 1,
+            },
+          };
+        } else if (mediaFeature.value.value === "landscape") {
+          return {
+            type: "single",
+            name: "aspect-ratio",
+            op: ">=",
+            value: {
+              type: "ratio",
+              numerator: 1,
+              denominator: 1,
+            },
+          };
         }
       }
     } else if (isFeatureKey(feature)) {
@@ -444,7 +438,7 @@ export const simplifyMediaFeature = (
       maxOp: "<",
       max: {
         type: "ratio",
-        numerator: Infinity,
+        numerator: Number.POSITIVE_INFINITY,
         denominator: 1,
       },
     };
@@ -471,13 +465,10 @@ export const getRatio = (unit: Unit): null | readonly [number, number] => {
   }
 };
 
-export const getValue = (
-  unit: Unit,
-  name: keyof RangeNumberFeatures
-): null | number => {
+export const getValue = (unit: Unit, name: keyof RangeNumberFeatures): null | number => {
   const featData = RANGE_NUMBER_FEATURES[name];
   if (unit.type === "infinite") {
-    if (name === "resolution") return Infinity;
+    if (name === "resolution") return Number.POSITIVE_INFINITY;
   } else if (featData.type === "integer") {
     if (unit.type === "number" && Number.isInteger(unit.value)) {
       return unit.value;

@@ -1,5 +1,5 @@
-import { EvaluateResult, SimplePerm } from "./compile";
-import { RANGE_NUMBER_FEATURES, RANGE_RATIO_FEATURES } from "./helpers";
+import { EvaluateResult, SimplePerm } from "./compile.js";
+import { RANGE_NUMBER_FEATURES, RANGE_RATIO_FEATURES } from "./helpers.js";
 
 type Values<T> = T[keyof T];
 type KVPairs<T> = Values<{
@@ -79,7 +79,7 @@ const simplify = (a: number, b: number): [number, number] => {
   return [a / divisor, b / divisor];
 };
 
-const to5dp = (n: number) => parseFloat(n.toFixed(5));
+const to5dp = (n: number) => Number.parseFloat(n.toFixed(5));
 
 const asGamutDescriptions = (
   feature: "color-gamut" | "video-color-gamut"
@@ -430,9 +430,7 @@ const asGamutDescriptions = (
   ],
 ];
 
-export const featurePairToEnglishQuerySegments = (
-  p: FeaturePair
-): QuerySegment[] => {
+export const featurePairToEnglishQuerySegments = (p: FeaturePair): QuerySegment[] => {
   if (p[0] === "media-type") {
     let value = "is screen";
     if (p[1] === "print") {
@@ -449,15 +447,13 @@ export const featurePairToEnglishQuerySegments = (
       },
     ];
   } else if (p[0] === "color") {
-    const [, , maxBounds, maxBoundsInclusive] =
-      RANGE_NUMBER_FEATURES[p[0]].bounds;
+    const [, , maxBounds, maxBoundsInclusive] = RANGE_NUMBER_FEATURES[p[0]].bounds;
     const [minInclusive, min, max, maxInclusive] = p[1];
 
     const includesZero = min === 0 && minInclusive && (max > 0 || maxInclusive);
     const lowerBounded = min > 1 || (min === 1 && true > minInclusive);
     const upperBounded =
-      max < maxBounds ||
-      (max === maxBounds && maxBoundsInclusive > maxInclusive);
+      max < maxBounds || (max === maxBounds && maxBoundsInclusive > maxInclusive);
 
     const segments: QuerySegment[] = [];
     if (min === max && minInclusive && maxInclusive) {
@@ -520,16 +516,13 @@ export const featurePairToEnglishQuerySegments = (
     }
     return segments;
   } else if (p[0] === "monochrome") {
-    const [, , maxBounds, maxBoundsInclusive] =
-      RANGE_NUMBER_FEATURES[p[0]].bounds;
+    const [, , maxBounds, maxBoundsInclusive] = RANGE_NUMBER_FEATURES[p[0]].bounds;
     const [minInclusive, min, max, maxInclusive] = p[1];
 
-    const ifIncludesZero =
-      min === 0 && minInclusive && (max > 0 || maxInclusive);
+    const ifIncludesZero = min === 0 && minInclusive && (max > 0 || maxInclusive);
     const lowerBounded = min > 1 || (min === 1 && true > minInclusive);
     const upperBounded =
-      max < maxBounds ||
-      (max === maxBounds && maxBoundsInclusive > maxInclusive);
+      max < maxBounds || (max === maxBounds && maxBoundsInclusive > maxInclusive);
 
     const segments: QuerySegment[] = [];
     if (min === max && minInclusive && maxInclusive) {
@@ -632,11 +625,9 @@ export const featurePairToEnglishQuerySegments = (
     const [minInclusive, min, max, maxInclusive] = p[1];
 
     const lowerBounded =
-      min > minBounds ||
-      (min === minBounds && minBoundsInclusive > minInclusive);
+      min > minBounds || (min === minBounds && minBoundsInclusive > minInclusive);
     const upperBounded =
-      max < maxBounds ||
-      (max === maxBounds && maxBoundsInclusive > maxInclusive);
+      max < maxBounds || (max === maxBounds && maxBoundsInclusive > maxInclusive);
 
     const minDim: QuerySegment = {
       type: "never",
@@ -706,19 +697,16 @@ export const featurePairToEnglishQuerySegments = (
     }
     return segments;
   } else if (p[0] === "aspect-ratio" || p[0] === "device-aspect-ratio") {
-    const [minBoundsInclusive, nb, xb, maxBoundsInclusive] =
-      RANGE_RATIO_FEATURES[p[0]].bounds;
+    const [minBoundsInclusive, nb, xb, maxBoundsInclusive] = RANGE_RATIO_FEATURES[p[0]].bounds;
     const minBounds = nb[0] / nb[1];
     const maxBounds = xb[0] / xb[1];
     const [minInclusive, n, x, maxInclusive] = p[1];
     const min = n[0] / n[1];
     const max = x[0] / x[1];
     const lowerBounded =
-      min > minBounds ||
-      (min === minBounds && minBoundsInclusive > minInclusive);
+      min > minBounds || (min === minBounds && minBoundsInclusive > minInclusive);
     const upperBounded =
-      max < maxBounds ||
-      (max === maxBounds && maxBoundsInclusive > maxInclusive);
+      max < maxBounds || (max === maxBounds && maxBoundsInclusive > maxInclusive);
 
     const prefix = p[0] === "aspect-ratio" ? "is" : "device is";
 
@@ -794,9 +782,7 @@ export const featurePairToEnglishQuerySegments = (
       return [
         {
           type: "plain",
-          value: `primary input ${
-            p[1] === "hover" ? "supports" : "doesn't support"
-          }`,
+          value: `primary input ${p[1] === "hover" ? "supports" : "doesn't support"}`,
         },
         {
           type: "feature",
@@ -819,9 +805,7 @@ export const featurePairToEnglishQuerySegments = (
           value:
             p[1] === "none"
               ? `no pointing device`
-              : `primary pointing device is ${
-                  p[1] === "fine" ? "precise" : "imprecise"
-                }`,
+              : `primary pointing device is ${p[1] === "fine" ? "precise" : "imprecise"}`,
         },
       ];
     } else {
@@ -831,9 +815,7 @@ export const featurePairToEnglishQuerySegments = (
           value:
             p[1] === "none"
               ? `no pointing device`
-              : `a pointing device is ${
-                  p[1] === "fine" ? "precise" : "imprecise"
-                }`,
+              : `a pointing device is ${p[1] === "fine" ? "precise" : "imprecise"}`,
         },
       ];
     }
@@ -841,10 +823,7 @@ export const featurePairToEnglishQuerySegments = (
     return [
       {
         type: "plain",
-        value:
-          p[1] === 0
-            ? `doesn't use terminal as display`
-            : `uses terminal as display`,
+        value: p[1] === 0 ? `doesn't use terminal as display` : `uses terminal as display`,
       },
     ];
   } else if (p[0] === "scan") {
@@ -852,9 +831,7 @@ export const featurePairToEnglishQuerySegments = (
       {
         type: "plain",
         value:
-          p[1] === "interlace"
-            ? `on alternating frame screen`
-            : `on non-alternating frame screen`,
+          p[1] === "interlace" ? `on alternating frame screen` : `on non-alternating frame screen`,
       },
     ];
   } else if (p[0] === "update") {
@@ -869,21 +846,13 @@ export const featurePairToEnglishQuerySegments = (
     ];
   } else if (p[0] === "color-gamut" || p[0] === "video-color-gamut") {
     // color-gamut
-    const index =
-      (p[1][3] ? 1 : 0) +
-      (p[1][2] ? 2 : 0) +
-      (p[1][1] ? 4 : 0) +
-      (p[1][0] ? 8 : 0);
+    const index = (p[1][3] ? 1 : 0) + (p[1][2] ? 2 : 0) + (p[1][1] ? 4 : 0) + (p[1][0] ? 8 : 0);
     const segments = asGamutDescriptions(p[0])[index];
     const shouldEnclose = segments.some(
       (child) => child.type === "bool-op" && child.value === "or"
     );
     return shouldEnclose
-      ? [
-          { type: "paren", value: "(" },
-          ...segments,
-          { type: "paren", value: ")" },
-        ]
+      ? [{ type: "paren", value: "(" }, ...segments, { type: "paren", value: ")" }]
       : segments;
   } else if (p[0] === "overflow-block") {
     return [
@@ -892,9 +861,7 @@ export const featurePairToEnglishQuerySegments = (
         value:
           p[1] === "none"
             ? "cannot view vertical overflow"
-            : `can view vertical overflow ${
-                p[1] === "scroll" ? "by scrolling" : "as pages"
-              }`,
+            : `can view vertical overflow ${p[1] === "scroll" ? "by scrolling" : "as pages"}`,
       },
     ];
   } else if (p[0] === "overflow-inline") {
@@ -904,9 +871,7 @@ export const featurePairToEnglishQuerySegments = (
         value:
           p[1] === "none"
             ? "cannot view horizontal overflow"
-            : `can view horizontal overflow ${
-                p[1] === "scroll" ? "by scrolling" : "as pages"
-              }`,
+            : `can view horizontal overflow ${p[1] === "scroll" ? "by scrolling" : "as pages"}`,
       },
     ];
   } else if (p[0] === "display-mode") {
@@ -946,30 +911,21 @@ export const featurePairToEnglishQuerySegments = (
     return [
       {
         type: "plain",
-        value:
-          p[1] === "none"
-            ? "no forced color palette"
-            : "user has forced a color palette",
+        value: p[1] === "none" ? "no forced color palette" : "user has forced a color palette",
       },
     ];
   } else if (p[0] === "nav-controls") {
     return [
       {
         type: "plain",
-        value:
-          p[1] === "none"
-            ? "has no obvious back button"
-            : "has obvious back button",
+        value: p[1] === "none" ? "has no obvious back button" : "has obvious back button",
       },
     ];
   } else if (p[0] === "inverted-colors") {
     return [
       {
         type: "plain",
-        value:
-          p[1] === "none"
-            ? "screen has not inverted colors"
-            : "screen has inverted colors",
+        value: p[1] === "none" ? "screen has not inverted colors" : "screen has inverted colors",
       },
     ];
   } else if (p[0] === "scripting") {
@@ -1009,10 +965,7 @@ export const featurePairToEnglishQuerySegments = (
     return [
       {
         type: "plain",
-        value:
-          p[1] === "no-preference"
-            ? "no preference for reduced data"
-            : "prefers less data",
+        value: p[1] === "no-preference" ? "no preference for reduced data" : "prefers less data",
       },
     ];
   } else if (p[0] === "prefers-reduced-motion") {
@@ -1020,9 +973,7 @@ export const featurePairToEnglishQuerySegments = (
       {
         type: "plain",
         value:
-          p[1] === "no-preference"
-            ? "no preference for reduced motion"
-            : "prefers less motion",
+          p[1] === "no-preference" ? "no preference for reduced motion" : "prefers less motion",
       },
     ];
   } else {
@@ -1040,17 +991,15 @@ export const featurePairToEnglishQuerySegments = (
 };
 
 export const toEnglishData = (result: EvaluateResult): HumanFriendlyData => {
-  const featurePairLists: FeaturePair[][] = result.simplePerms.map(
-    (simplePerm) => {
-      const list: FeaturePair[] = [];
-      for (const key in simplePerm) {
-        const k = key as keyof typeof simplePerm;
-        const index = SORT_ORDER[k];
-        list[index] = [k, simplePerm[k]] as FeaturePair;
-      }
-      return list.filter(Boolean);
+  const featurePairLists: FeaturePair[][] = result.simplePerms.map((simplePerm) => {
+    const list: FeaturePair[] = [];
+    for (const key in simplePerm) {
+      const k = key as keyof typeof simplePerm;
+      const index = SORT_ORDER[k];
+      list[index] = [k, simplePerm[k]] as FeaturePair;
     }
-  );
+    return list.filter(Boolean);
+  });
 
   let isAlways = false;
   const querySegmentLists: QuerySegment[][] = [];
@@ -1073,9 +1022,7 @@ export const toEnglishData = (result: EvaluateResult): HumanFriendlyData => {
   }
 
   return {
-    querySegmentLists: isAlways
-      ? [[{ type: "always", value: "always" }]]
-      : querySegmentLists,
+    querySegmentLists: isAlways ? [[{ type: "always", value: "always" }]] : querySegmentLists,
     invalidFeatures: result.invalidFeatures,
     falseFeatures: result.falseFeatures,
   };
@@ -1104,9 +1051,7 @@ export const toEnglishString = (result: EvaluateResult): string => {
       if (querySegment.type === "always") {
         return "always";
       } else if (querySegment.type === "never") {
-        throw new Error(
-          "Unexpected never found, report issue with media-query-fns"
-        );
+        throw new Error("Unexpected never found, report issue with media-query-fns");
       } else if (querySegment.type === "bool-op") {
         str = ensureSpace(str) + querySegment.value.toUpperCase();
       } else if (querySegment.type === "paren" && querySegment.value === ")") {
@@ -1118,11 +1063,9 @@ export const toEnglishString = (result: EvaluateResult): string => {
     if (hasAlreadyAddedASegmentList) {
       englishString = ensureSpace(englishString) + "OR";
     }
-    if (str.includes(" AND ")) {
-      englishString = ensureSpace(englishString) + "(" + str + ")";
-    } else {
-      englishString = ensureSpace(englishString) + str;
-    }
+    englishString = str.includes(" AND ")
+      ? ensureSpace(englishString) + "(" + str + ")"
+      : ensureSpace(englishString) + str;
     hasAlreadyAddedASegmentList = true;
   }
   return englishString;

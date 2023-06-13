@@ -1,27 +1,28 @@
 # `media-query-fns`
 
-[![npm version](https://img.shields.io/npm/v/media-query-fns.svg?style=flat-square)](https://www.npmjs.com/package/media-query-fns)
-![npm bundle size](https://img.shields.io/bundlephobia/minzip/media-query-fns?style=flat-square)
-[![test coverage](https://img.shields.io/badge/dynamic/json?style=flat-square&color=brightgreen&label=coverage&query=%24.total.branches.pct&url=https%3A%2F%2Fraw.githubusercontent.com%2Ftbjgolden%2Fmedia-query-fns%2Fmain%2Fcoverage%2Fcoverage-summary.json)](https://www.npmjs.com/package/media-query-fns)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/tbjgolden/media-query-fns/Release?style=flat-square)](https://github.com/tbjgolden/media-query-fns/actions?query=workflow%3ARelease)
+![npm](https://img.shields.io/npm/v/media-query-fns)
+![npm type definitions](https://img.shields.io/npm/types/media-query-fns)
+![license](https://img.shields.io/npm/l/media-query-fns)
+![npm downloads](https://img.shields.io/npm/dw/media-query-fns)
+[![install size](https://packagephobia.com/badge?p=media-query-fns)](https://packagephobia.com/result?p=media-query-fns)
 
 ![](screen.gif)
 
-Functions to read media queries from a string/ast and:
+Cool functions for media queries. [**Spec-compliant**](https://www.w3.org/TR/mediaqueries-5).
 
-- [x] Check if a media query is true for a custom environment
-  - [x] Backed up by [hundreds of unit tests](https://github.com/tbjgolden/media-query-fns/blob/main/src/matches.test.ts)
-- [x] Converts a media query to a human friendly description
+---
 
-Based on [media-query-parser](https://github.com/tbjgolden/media-query-parser) which means:
+## Install
 
-- [x] **parses any correct CSS media queries**
-- [x] **spec-compliant everything** - https://www.w3.org/TR/mediaqueries-5/ (as of 2022-12-04)
-- [x] **TypeScript friendly**
-- [x] **all valid queries parsed and interpreted, even newer syntax like
-      `@media (100px < width < 200px)` or complex ones like `@media not screen and ((not (update: none)) and (prefers-reduced-motion: reduce))`**
+This package is available from the `npm` registry.
 
-## Quickfire examples
+```sh
+npm install media-query-fns
+```
+
+## Usage
+
+Supports JavaScript + TypeScript:
 
 ```ts
 import { compileQuery, matches, toEnglishString } from "media-query-fns";
@@ -40,9 +41,7 @@ const testEnv = (widthPx = 1280, heightPx = 800) => ({
 console.log(matches(maxWidthQuery, testEnv(1280))); // false
 console.log(matches(maxWidthQuery, testEnv(1000))); // true
 
-const complexQuery = compileQuery(
-  `@media screen and (monochrome) and (orientation)`
-);
+const complexQuery = compileQuery(`@media screen and (monochrome) and (orientation)`);
 console.log(matches(complexQuery, testEnv()));
 // true
 
@@ -53,21 +52,20 @@ console.log(toEnglishString(complexQuery));
 // note: (orientation) without "landscape" or "portrait" is always true, so it's removed for brevity
 ```
 
-## Considerations & Caveats
+Can also be imported via `require("media-query-fns")`.
 
-This library doesn't support calc because it [follows the spec](https://www.w3.org/TR/mediaqueries-5/#ref-for-media-feature%E2%91%A0%E2%93%AA).
+## Contributing
 
-Many browsers do support calc to some extent, but they probably shouldn't as it opens up a Pandora's box of nasty edge cases that would lead to browser inconsistencies (without a spec to unify them, anyway).
+- PRs welcome and accepted, simply fork and create
+- Issues also very welcome
+- Treat others with common courtesy and respect 🤝
 
-## Installation
+Dev environment (for contributing) requires:
 
-```sh
-npm install media-query-fns --save
-# yarn add media-query-fns
-```
+- node >= 16.14.0
+- npm >= 6.8.0
+- git >= 2.11
 
-<!-- ## [`API`](docs/api) -->
-
-## License
+## Licence
 
 MIT
