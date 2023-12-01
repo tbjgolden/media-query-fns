@@ -170,7 +170,27 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                     (!featureData.canNumeratorBeZero || !featureData.canDenominatorBeZero) &&
                     (feature.r.op === "<" || feature.r.op === ">"));
 
-                return isImpossible ? "false" : config.solveUnknownFeature(feature);
+                if (isImpossible) return "false";
+
+                const isAlways =
+                  (feature.r.op === ">=" &&
+                    l === 0 &&
+                    r !== 0 &&
+                    !featureData.canDenominatorBeZero) ||
+                  (feature.r.op === ">" &&
+                    l === 0 &&
+                    r !== 0 &&
+                    !featureData.canNumeratorBeZero &&
+                    featureData.canDenominatorBeZero) ||
+                  (feature.r.op === "<=" &&
+                    l !== 0 &&
+                    r === 0 &&
+                    !(featureData.canNumeratorBeZero && featureData.canDenominatorBeZero)) ||
+                  (feature.r.op === "<" && l !== 0 && r === 0 && !featureData.canDenominatorBeZero);
+
+                if (isAlways) return "true";
+
+                return config.solveUnknownFeature(feature);
               } else {
                 return "false";
               }
@@ -190,7 +210,23 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                     !featureData.canBeZero &&
                     b.v === 1);
 
-                return isImpossible ? "false" : config.solveUnknownFeature(feature);
+                if (isImpossible) return "false";
+
+                const isAlways =
+                  (feature.r.op === ">=" && !featureData.canBeNegative && b.v <= 0) ||
+                  (feature.r.op === ">=" &&
+                    !featureData.canBeNegative &&
+                    !featureData.canBeZero &&
+                    b.v === 1) ||
+                  (feature.r.op === ">" && !featureData.canBeNegative && b.v < 0) ||
+                  (feature.r.op === ">" &&
+                    !featureData.canBeNegative &&
+                    !featureData.canBeZero &&
+                    b.v === 0);
+
+                if (isAlways) return "true";
+
+                return config.solveUnknownFeature(feature);
               } else {
                 return "false";
               }
@@ -206,7 +242,19 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                     b.v === 0) ||
                   (feature.r.op === "<" && !featureData.canBeNegative && b.v <= 0);
 
-                return isImpossible ? "false" : config.solveUnknownFeature(feature);
+                if (isImpossible) return "false";
+
+                const isAlways =
+                  (feature.r.op === ">=" && !featureData.canBeNegative && b.v <= 0) ||
+                  (feature.r.op === ">" && !featureData.canBeNegative && b.v < 0) ||
+                  (feature.r.op === ">" &&
+                    !featureData.canBeNegative &&
+                    !featureData.canBeZero &&
+                    b.v === 0);
+
+                if (isAlways) return "true";
+
+                return config.solveUnknownFeature(feature);
               } else {
                 return "false";
               }
@@ -222,7 +270,19 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                     b.v === 0) ||
                   (feature.r.op === "<" && !featureData.canBeNegative && b.v <= 0);
 
-                return isImpossible ? "false" : config.solveUnknownFeature(feature);
+                if (isImpossible) return "false";
+
+                const isAlways =
+                  (feature.r.op === ">=" && !featureData.canBeNegative && b.v <= 0) ||
+                  (feature.r.op === ">" && !featureData.canBeNegative && b.v < 0) ||
+                  (feature.r.op === ">" &&
+                    !featureData.canBeNegative &&
+                    !featureData.canBeZero &&
+                    b.v === 0);
+
+                if (isAlways) return "true";
+
+                return config.solveUnknownFeature(feature);
               } else {
                 return "false";
               }

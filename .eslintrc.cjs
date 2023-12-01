@@ -54,8 +54,9 @@ const config = {
         },
       },
     ],
-    "unicorn/no-new-array": "off",
+    "unicorn/no-array-reduce": "off",
     "unicorn/no-await-expression-member": "off",
+    "unicorn/no-new-array": "off",
 
     // project specific
     "unicorn/prefer-code-point": "off",

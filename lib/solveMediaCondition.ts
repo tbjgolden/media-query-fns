@@ -3,7 +3,10 @@ import {
   Kleene3,
   SolverConfig,
   SolverConfigInput,
+  and,
   createSolverConfig,
+  not,
+  or,
 } from "./solveMediaQueryList.js";
 import { solveMediaInParens_ } from "./solveMediaInParens.js";
 
@@ -14,35 +17,16 @@ export const solveMediaCondition = (
 
 export const solveMediaCondition_ = (condition: ConditionNode, config: SolverConfig): Kleene3 => {
   if (condition.op === "and") {
-    let result: Kleene3 = "true";
-    for (const inParens of [condition.a, ...(condition.bs ?? [])]) {
-      const nextResult = solveMediaInParens_(inParens, config);
-      if (nextResult === "false") {
-        return "false";
-      } else if (nextResult === "unknown") {
-        result = "unknown";
-      }
-    }
-    return result;
+    return and(
+      solveMediaInParens_(condition.a, config),
+      ...(condition.bs ?? []).map((inParens) => solveMediaInParens_(inParens, config))
+    );
   } else if (condition.op === "or") {
-    let result: Kleene3 = "false";
-    for (const inParens of [condition.a, ...(condition.bs ?? [])]) {
-      const nextResult = solveMediaInParens_(inParens, config);
-      if (nextResult === "true") {
-        return "true";
-      } else if (nextResult === "unknown") {
-        result = "unknown";
-      }
-    }
-    return result;
+    return or(
+      solveMediaInParens_(condition.a, config),
+      ...(condition.bs ?? []).map((inParens) => solveMediaInParens_(inParens, config))
+    );
   } else {
-    const inParensResult = solveMediaInParens_(condition.a, config);
-    if (inParensResult === "true") {
-      return "false";
-    } else if (inParensResult === "false") {
-      return "true";
-    } else {
-      return "unknown";
-    }
+    return not(solveMediaInParens_(condition.a, config));
   }
 };

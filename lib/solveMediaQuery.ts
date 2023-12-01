@@ -18,7 +18,7 @@ export const solveMediaQuery_ = (mediaQuery: QueryNode, config: SolverConfig): K
   }
 
   let typeMatch: Kleene3;
-  if (mediaQuery.type === "all") typeMatch = "true";
+  if (mediaQuery.type === undefined || mediaQuery.type === "all") typeMatch = "true";
   else if (mediaQuery.type === "screen") typeMatch = config.isMediaTypeScreen;
   else if (mediaQuery.type === "print") typeMatch = not(config.isMediaTypeScreen);
   else typeMatch = "false";

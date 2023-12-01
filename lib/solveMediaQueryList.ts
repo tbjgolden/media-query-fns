@@ -7,10 +7,19 @@ export const not = (x: Kleene3): Kleene3 => {
   else if (x === "false") return "true";
   return "unknown";
 };
-export const and = (a: Kleene3, b: Kleene3): Kleene3 => {
-  if (a === "false" || b === "false") return "false";
-  else if (a === "unknown" || b === "unknown") return "unknown";
-  return "true";
+export const and = (a: Kleene3, ...bs: Kleene3[]): Kleene3 => {
+  return bs.reduce((x: Kleene3, y: Kleene3): Kleene3 => {
+    if (x === "false" || y === "false") return "false";
+    else if (x === "unknown" || y === "unknown") return "unknown";
+    return "true";
+  }, a);
+};
+export const or = (a: Kleene3, ...bs: Kleene3[]): Kleene3 => {
+  return bs.reduce((x: Kleene3, y: Kleene3): Kleene3 => {
+    if (x === "true" || y === "true") return "true";
+    else if (x === "unknown" || y === "unknown") return "unknown";
+    return "false";
+  }, a);
 };
 
 export type SolverConfig = {
