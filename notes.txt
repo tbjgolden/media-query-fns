@@ -1,0 +1,41 @@
+color-gamut                   srgb | p3 | rec2020                             discrete
+display-mode                  fullscreen | standalone | minimal-ui | browser  discrete
+dynamic-range                 standard | high                                 discrete
+environment-blending          opaque | additive | subtractive                 discrete
+orientation                   portrait | landscape                            discrete
+prefers-color-scheme          light | dark                                    discrete
+prefers-contrast              no-preference | less | more | custom            discrete
+prefers-reduced-data          no-preference | reduce                          discrete
+prefers-reduced-motion        no-preference | reduce                          discrete
+prefers-reduced-transparency  no-preference | reduce                          discrete
+scan                          interlace | progressive                         discrete
+video-color-gamut             srgb | p3 | rec2020                             discrete
+video-dynamic-range           standard | high                                 discrete
+any-hover                     none | hover                                    discrete
+any-pointer                   none | coarse | fine                            discrete
+forced-colors                 none | active                                   discrete
+hover                         none | hover                                    discrete
+inverted-colors               none | inverted                                 discrete
+nav-controls                  none | back                                     discrete
+overflow-block                none | scroll | paged                           discrete
+overflow-inline               none | scroll                                   discrete
+pointer                       none | coarse | fine                            discrete
+update                        none | slow | fast                              discrete
+scripting                     none | initial-only | enabled                   discrete
+grid                          <mq-boolean>                                    discrete
+
+resolution                    <resolution> | infinite                         range finr
+
+device-height                 <length>                                        range finr
+device-width                  <length>                                        range finr
+height                        <length>                                        range finr
+width                         <length>                                        range finr
+
+device-aspect-ratio           <ratio>                                         range (can't be negative)
+aspect-ratio                  <ratio>                                         range (can't be negative)
+
+color                         <integer>                                       range finr
+horizontal-viewport-segments  <integer>                                       range finr
+color-index                   <integer>                                       range finr
+monochrome                    <integer>                                       range finr
+vertical-viewport-segments    <integer>                                       range finr
