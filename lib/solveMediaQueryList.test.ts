@@ -1,8 +1,8 @@
-import { FeatureNode, QueryListNode, parseMediaQueryList } from "media-query-parser";
+import { FeatureNode, parseMediaQueryList } from "media-query-parser";
 import { solveMediaQueryList } from "./solveMediaQueryList.js";
 import { isValueRatio } from "./valueHelpers.js";
 
-const r = (str: TemplateStringsArray) => parseMediaQueryList(str[0]) as QueryListNode;
+const r = (str: TemplateStringsArray) => parseMediaQueryList(str[0]);
 
 const solveUnknownFeature = (f: FeatureNode) => {
   if (f.f === "aspect-ratio" && f.t === "value") {
@@ -29,6 +29,14 @@ test("mql combos", () => {
   expect(solveMediaQueryList(r`not all, all`)).toBe("true");
   expect(solveMediaQueryList(r`all, screen`)).toBe("true");
   expect(solveMediaQueryList(r`screen, screen`)).toBe("unknown");
+});
+
+test("unknown type", () => {
+  expect(solveMediaQueryList(r`audial`)).toBe("false");
+});
+
+test("unknown feature", () => {
+  expect(solveMediaQueryList(r`(ainsley: harriott)`)).toBe("false");
 });
 
 test("boolean features", () => {
@@ -62,40 +70,25 @@ test("range features", () => {
 });
 
 test("mq conditions (and)", () => {
-  // tt
   expect(solveMediaQueryList(r`(width >= 0) and (resolution >= 0x)`)).toBe("true");
-  // tu
   expect(solveMediaQueryList(r`(width >= 0) and (resolution = 0x)`)).toBe("unknown");
-  // tf
   expect(solveMediaQueryList(r`(width >= 0) and (resolution = -1x)`)).toBe("false");
-  // uu
   expect(solveMediaQueryList(r`(width > 0) and (resolution = 0x)`)).toBe("unknown");
-  // uf
   expect(solveMediaQueryList(r`(width >= 0) and (resolution = -1x)`)).toBe("false");
-  // ff
   expect(solveMediaQueryList(r`(width < 0) and (resolution = -1x)`)).toBe("false");
 });
 
 test("mq conditions (or)", () => {
-  // tt
   expect(solveMediaQueryList(r`((width >= 0) or (resolution >= 0x))`)).toBe("true");
-  // tu
   expect(solveMediaQueryList(r`((width >= 0) or (resolution = 0x))`)).toBe("true");
-  // tf
   expect(solveMediaQueryList(r`((width >= 0) or (resolution = -1x))`)).toBe("true");
-  // uu
   expect(solveMediaQueryList(r`((width > 0) or (resolution = 0x))`)).toBe("unknown");
-  // uf
   expect(solveMediaQueryList(r`((width > 0) or (resolution = -1x))`)).toBe("unknown");
-  // ff
   expect(solveMediaQueryList(r`((width < 0) or (resolution = -1x))`)).toBe("false");
 });
 
 test("mq conditions (not)", () => {
-  // t
   expect(solveMediaQueryList(r`(not (width >= 0))`)).toBe("false");
-  // u
   expect(solveMediaQueryList(r`(not (width > 0))`)).toBe("unknown");
-  // f
   expect(solveMediaQueryList(r`(not (width < 0))`)).toBe("true");
 });

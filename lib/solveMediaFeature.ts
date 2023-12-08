@@ -1,4 +1,4 @@
-import { FeatureNode, NumericValueNode } from "media-query-parser";
+import { FeatureNode, NumericValueNode, ParserError, isParserError } from "media-query-parser";
 import {
   Kleene3,
   SolverConfig,
@@ -17,9 +17,12 @@ import {
 import { solveMediaCondition_ } from "./solveMediaCondition.js";
 
 export const solveMediaFeature = (
-  condition: FeatureNode,
-  configInput: SolverConfigInput
-): Kleene3 => solveMediaFeature_(condition, createSolverConfig(configInput));
+  condition: FeatureNode | ParserError,
+  configInput?: SolverConfigInput
+): Kleene3 =>
+  isParserError(condition)
+    ? "false"
+    : solveMediaFeature_(condition, createSolverConfig(configInput));
 
 export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): Kleene3 => {
   const isMin = feature.f.startsWith("min-");
