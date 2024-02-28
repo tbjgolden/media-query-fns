@@ -1,30 +1,36 @@
-import { FeatureNode, ParserError, QueryListNode, isParserError } from "media-query-parser";
+import {
+  FeatureNode,
+  GeneralEnclosedNode,
+  ParserError,
+  QueryListNode,
+  isParserError,
+} from "media-query-parser";
 import { solveMediaQuery_ } from "./solveMediaQuery.js";
 
 export type Kleene3 = "true" | "false" | "unknown";
-export const not = (x: Kleene3): Kleene3 => {
-  if (x === "true") return "false";
-  else if (x === "false") return "true";
+export const not = (kleene3: Kleene3): Kleene3 => {
+  if (kleene3 === "true") return "false";
+  else if (kleene3 === "false") return "true";
   return "unknown";
 };
-export const and = (a: Kleene3, ...bs: Kleene3[]): Kleene3 => {
-  return bs.reduce((x: Kleene3, y: Kleene3): Kleene3 => {
+export const and = (...kleene3s: Kleene3[]): Kleene3 => {
+  return kleene3s.reduce((x: Kleene3, y: Kleene3): Kleene3 => {
     if (x === "false" || y === "false") return "false";
     else if (x === "unknown" || y === "unknown") return "unknown";
     return "true";
-  }, a);
+  }, "true");
 };
-export const or = (a: Kleene3, ...bs: Kleene3[]): Kleene3 => {
-  return bs.reduce((x: Kleene3, y: Kleene3): Kleene3 => {
+export const or = (...kleene3s: Kleene3[]): Kleene3 => {
+  return kleene3s.reduce((x: Kleene3, y: Kleene3): Kleene3 => {
     if (x === "true" || y === "true") return "true";
     else if (x === "unknown" || y === "unknown") return "unknown";
     return "false";
-  }, a);
+  }, "false");
 };
 
 export type SolverConfig = {
-  solveUnknownFeature: (fn: FeatureNode) => Kleene3;
-  solveGeneralEnclosed: () => Kleene3;
+  solveUnknownFeature: (node: FeatureNode) => Kleene3;
+  solveGeneralEnclosed: (node: GeneralEnclosedNode) => Kleene3;
   isLegacyBrowser: Kleene3;
   isMediaTypeScreen: Kleene3;
   features: Map<
@@ -49,33 +55,31 @@ export type SolverConfig = {
       }
   >;
 };
-export type SolverConfigInput = Partial<{
-  solveUnknownFeature: (fn: FeatureNode) => Kleene3;
-  solveGeneralEnclosed: () => Kleene3;
-  isMediaTypeScreen: Kleene3;
-  isLegacyBrowser: Kleene3;
-  features: Record<
-    string,
-    | {
-        type: "discrete";
-        values: Array<string | number>;
-      }
-    | {
-        type: "range";
-        valueType: "length" | "integer" | "resolution";
-        canBeZero: boolean;
-        canBeNegative: boolean;
-        extraValues?: Record<string, number | "unknown">;
-      }
-    | {
-        type: "range";
-        valueType: "ratio";
-        canNumeratorBeZero: boolean;
-        canDenominatorBeZero: boolean;
-        extraValues?: Record<string, number | "unknown">;
-      }
-  >;
-}>;
+export type SolverConfigInput = Partial<
+  Omit<SolverConfig, "features"> & {
+    features: Record<
+      string,
+      | {
+          type: "discrete";
+          values: Array<string | number>;
+        }
+      | {
+          type: "range";
+          valueType: "length" | "integer" | "resolution";
+          canBeZero: boolean;
+          canBeNegative: boolean;
+          extraValues?: Record<string, number | "unknown">;
+        }
+      | {
+          type: "range";
+          valueType: "ratio";
+          canNumeratorBeZero: boolean;
+          canDenominatorBeZero: boolean;
+          extraValues?: Record<string, number | "unknown">;
+        }
+    >;
+  }
+>;
 
 export const DEFAULT_KNOWN_FEATURES: SolverConfigInput["features"] = {
   "color-gamut": { type: "discrete", values: ["srgb", "p3", "rec2020"] },
@@ -150,7 +154,7 @@ const entries = <T extends string, U>(obj: Record<T, U>): [T, U][] =>
   Object.entries(obj) as [T, U][];
 
 export const createSolverConfig = (
-  solverConfigInput?: SolverConfigInput | undefined
+  solverConfigInput?: SolverConfigInput | undefined,
 ): SolverConfig => {
   const features: SolverConfig["features"] = new Map();
   for (const [name, data] of entries({
@@ -174,7 +178,7 @@ export const createSolverConfig = (
 
 export const solveMediaQueryList = (
   mediaQueryList: QueryListNode | ParserError,
-  configInput?: SolverConfigInput
+  configInput?: SolverConfigInput,
 ): Kleene3 =>
   isParserError(mediaQueryList)
     ? "false"
@@ -182,10 +186,10 @@ export const solveMediaQueryList = (
 
 export const solveMediaQueryList_ = (
   mediaQueryList: QueryListNode,
-  config: SolverConfig
+  config: SolverConfig,
 ): Kleene3 => {
-  const results = mediaQueryList.qs.map((q) =>
-    q === undefined ? "false" : solveMediaQuery_(q, config)
+  const results = mediaQueryList.nodes.map((q) =>
+    q === undefined ? "false" : solveMediaQuery_(q, config),
   );
 
   if (results.length === 0) {

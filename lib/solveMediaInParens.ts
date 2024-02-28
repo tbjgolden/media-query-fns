@@ -10,18 +10,18 @@ import { solveMediaFeature_ } from "./solveMediaFeature.js";
 
 export const solveMediaInParens = (
   inParens: InParensNode | ParserError,
-  configInput?: SolverConfigInput
+  configInput?: SolverConfigInput,
 ): Kleene3 =>
   isParserError(inParens)
     ? "false"
     : solveMediaInParens_(inParens, createSolverConfig(configInput));
 
 export const solveMediaInParens_ = (inParens: InParensNode, config: SolverConfig): Kleene3 => {
-  if (inParens.v.n === "condition") {
-    return solveMediaCondition_(inParens.v, config);
-  } else if (inParens.v.n === "feature") {
-    return solveMediaFeature_(inParens.v, config);
+  if (inParens.node._t === "condition") {
+    return solveMediaCondition_(inParens.node, config);
+  } else if (inParens.node._t === "feature") {
+    return solveMediaFeature_(inParens.node, config);
   } else {
-    return config.solveGeneralEnclosed();
+    return config.solveGeneralEnclosed(inParens.node);
   }
 };

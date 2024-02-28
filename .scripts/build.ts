@@ -47,7 +47,7 @@ while ((directory = toSearch.pop())) {
       if (result.code) {
         await writeFile(
           filePath,
-          format(result.code, {
+          await format(result.code, {
             printWidth: 100,
             useTabs: true,
             parser: "babel",
@@ -59,7 +59,7 @@ while ((directory = toSearch.pop())) {
             arrowParens: "avoid",
             endOfLine: "lf",
             quoteProps: "as-needed",
-          })
+          }),
         );
       }
     }

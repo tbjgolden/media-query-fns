@@ -5,8 +5,10 @@ import { isValueRatio } from "./valueHelpers.js";
 const r = (str: TemplateStringsArray) => parseMediaQueryList(str[0]);
 
 const solveUnknownFeature = (f: FeatureNode) => {
-  if (f.f === "aspect-ratio" && f.t === "value") {
-    const n = isValueRatio(f.v) && (f.v.n === "number" ? f.v.v : f.v.l / f.v.r);
+  if (f.feature === "aspect-ratio" && f.context === "value") {
+    const n =
+      isValueRatio(f.value) &&
+      (f.value._t === "number" ? f.value.value : f.value.left / f.value.right);
     return n === 2 ? "true" : "false";
   }
   return "unknown";
@@ -45,8 +47,9 @@ test("boolean features", () => {
   expect(solveMediaQueryList(r`(aspect-ratio)`)).toBe("unknown");
   expect(
     solveMediaQueryList(r`(aspect-ratio)`, {
-      solveUnknownFeature: (f) => (f.f === "aspect-ratio" && f.t === "boolean" ? "true" : "false"),
-    })
+      solveUnknownFeature: (f) =>
+        f.feature === "aspect-ratio" && f.context === "boolean" ? "true" : "false",
+    }),
   ).toBe("true");
 });
 

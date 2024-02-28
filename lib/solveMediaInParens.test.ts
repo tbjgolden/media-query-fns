@@ -3,7 +3,7 @@ import { solveMediaInParens } from "./solveMediaInParens.js";
 
 const r = (str: TemplateStringsArray) => {
   const c = parseMediaCondition(str[0]);
-  return isParserError(c) ? c : c.a;
+  return isParserError(c) ? c : c.nodes[0];
 };
 
 test("media in parens", () => {

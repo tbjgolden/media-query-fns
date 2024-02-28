@@ -1,4 +1,4 @@
-import { FeatureNode, NumericValueNode, ParserError, isParserError } from "media-query-parser";
+import { FeatureNode, ParserError, isParserError } from "media-query-parser";
 import {
   Kleene3,
   SolverConfig,
@@ -18,31 +18,34 @@ import { solveMediaCondition_ } from "./solveMediaCondition.js";
 
 export const solveMediaFeature = (
   condition: FeatureNode | ParserError,
-  configInput?: SolverConfigInput
+  configInput?: SolverConfigInput,
 ): Kleene3 =>
   isParserError(condition)
     ? "false"
     : solveMediaFeature_(condition, createSolverConfig(configInput));
 
 export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): Kleene3 => {
-  const isMin = feature.f.startsWith("min-");
-  const isMax = feature.f.startsWith("max-");
+  const isMin = feature.feature.startsWith("min-");
+  const isMax = feature.feature.startsWith("max-");
 
-  if ((isMin || isMax) && feature.t === "value" && feature.v.n !== "ident") {
-    const f = feature.f.slice(4);
+  if ((isMin || isMax) && feature.context === "value" && feature.value._t !== "ident") {
     return solveMediaFeature_(
       {
-        n: "feature",
-        t: "range",
-        f,
-        r: { a: { n: "ident", v: f }, op: isMin ? ">=" : "<=", b: feature.v },
+        _t: "feature",
+        context: "range",
+        ops: 1,
+        feature: feature.feature.slice(4),
+        op: isMin ? ">=" : "<=",
+        value: feature.value,
+        start: feature.start,
+        end: feature.end,
       },
-      config
+      config,
     );
   } else {
-    const featureData = config.features.get(feature.f);
+    const featureData = config.features.get(feature.feature);
     if (featureData) {
-      if (feature.t === "boolean") {
+      if (feature.context === "boolean") {
         const canBeFalsy =
           (featureData.type === "discrete" &&
             (featureData.values.has("none") || featureData.values.has(0))) ||
@@ -52,14 +55,14 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
               : featureData.canBeZero));
 
         return canBeFalsy ? config.solveUnknownFeature(feature) : "true";
-      } else if (feature.t === "value") {
+      } else if (feature.context === "value") {
         // TODO: support min- and max-
         if (featureData.type === "discrete") {
           let value: number | string;
-          if (feature.v.n === "ident") {
-            value = feature.v.v;
-          } else if (feature.v.n === "number" && feature.v.isInt) {
-            value = feature.v.v;
+          if (feature.value._t === "ident") {
+            value = feature.value.value;
+          } else if (feature.value._t === "number" && feature.value.flag === "integer") {
+            value = feature.value.value;
           } else {
             return "false";
           }
@@ -67,17 +70,23 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
         } else {
           // range feature in value context
           if (featureData.valueType === "integer") {
-            if (isValueInteger(feature.v)) {
+            if (isValueInteger(feature.value)) {
               const isImpossible =
-                (feature.v.v < 0 && !featureData.canBeNegative) ||
-                (feature.v.v === 0 && !featureData.canBeZero);
+                (feature.value.value < 0 && !featureData.canBeNegative) ||
+                (feature.value.value === 0 && !featureData.canBeZero);
               return isImpossible ? "false" : config.solveUnknownFeature(feature);
             } else {
               return "false";
             }
           } else if (featureData.valueType === "length") {
-            if (isValueLength(feature.v)) {
-              const comparison = compareLength(feature.v, { n: "number", v: 0, isInt: true });
+            if (isValueLength(feature.value)) {
+              const comparison = compareLength(feature.value, {
+                _t: "number",
+                value: 0,
+                flag: "integer",
+                start: 0,
+                end: 0,
+              });
               const isImpossible =
                 (comparison === "lt" && !featureData.canBeNegative) ||
                 (comparison === "eq" && !featureData.canBeZero);
@@ -86,16 +95,28 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
               return "false";
             }
           } else if (featureData.valueType === "ratio") {
-            if (isValueRatio(feature.v)) {
-              const comparison = compareRatio(feature.v, { n: "number", v: 0, isInt: true });
+            if (isValueRatio(feature.value)) {
+              const comparison = compareRatio(feature.value, {
+                _t: "number",
+                value: 0,
+                flag: "integer",
+                start: 0,
+                end: 0,
+              });
               const isImpossible = comparison === "eq" && !featureData.canNumeratorBeZero;
               return isImpossible ? "false" : config.solveUnknownFeature(feature);
             } else {
               return "false";
             }
           } else {
-            if (isValueResolution(feature.v)) {
-              const comparison = compareResolution(feature.v, { n: "dimension", v: 0, u: "x" });
+            if (isValueResolution(feature.value)) {
+              const comparison = compareResolution(feature.value, {
+                _t: "dimension",
+                value: 0,
+                unit: "x",
+                start: 0,
+                end: 0,
+              });
               const isImpossible =
                 (comparison === "lt" && !featureData.canBeNegative) ||
                 (comparison === "eq" && !featureData.canBeZero);
@@ -109,87 +130,78 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
         if (featureData.type === "discrete") {
           return "false";
         } else {
-          // so what we gotta do here
-          if ("op2" in feature.r) {
+          if (feature.ops === 2) {
             return solveMediaCondition_(
               {
-                n: "condition",
+                _t: "condition",
                 op: "and",
-                a: {
-                  n: "in-parens",
-                  v: {
-                    n: "feature",
-                    t: "range",
-                    f: feature.r.b.v,
-                    r: { a: feature.r.a, op: feature.r.op, b: feature.r.b },
-                  },
-                },
-                bs: [
+                nodes: [
                   {
-                    n: "in-parens",
-                    v: {
-                      n: "feature",
-                      t: "range",
-                      f: feature.r.b.v,
-                      r: { a: feature.r.b, op: feature.r.op2, b: feature.r.c },
+                    _t: "in-parens",
+                    node: {
+                      _t: "feature",
+                      context: "range",
+                      ops: 1,
+                      feature: feature.feature,
+                      op: feature.minOp === "<" ? ">" : ">=",
+                      value: feature.minValue,
+                      start: feature.minValue.start,
+                      end: feature.minValue.end,
+                    },
+                  },
+                  {
+                    _t: "in-parens",
+                    node: {
+                      _t: "feature",
+                      context: "range",
+                      ops: 1,
+                      feature: feature.feature,
+                      op: feature.maxOp,
+                      value: feature.maxValue,
+                      start: feature.maxValue.start,
+                      end: feature.maxValue.end,
                     },
                   },
                 ],
+                start: feature.start,
+                end: feature.end,
               },
-              config
-            );
-          } else if (feature.r.b.n === "ident") {
-            let op = feature.r.op;
-            if (op === "<") op = ">";
-            else if (op === "<=") op = ">=";
-            else if (op === ">") op = "<";
-            else if (op === ">=") op = "<=";
-
-            return solveMediaFeature_(
-              {
-                n: "feature",
-                t: "range",
-                f: feature.r.b.v,
-                r: { a: feature.r.b, op, b: feature.r.a as NumericValueNode },
-              },
-              config
+              config,
             );
           } else {
-            const b = feature.r.b as NumericValueNode;
-
             if (featureData.valueType === "ratio") {
-              if (isValueRatio(b)) {
-                const l = b.n === "number" ? b.v : b.l;
-                const r = b.n === "number" ? 1 : b.r;
+              if (isValueRatio(feature.value)) {
+                const l = feature.value._t === "number" ? feature.value.value : feature.value.left;
+                const r = feature.value._t === "number" ? 1 : feature.value.right;
 
                 const isImpossible =
                   (l === 0 &&
                     r !== 0 &&
-                    ((feature.r.op === "=" && !featureData.canNumeratorBeZero) ||
-                      (feature.r.op === "<=" && !featureData.canNumeratorBeZero) ||
-                      feature.r.op === "<")) ||
+                    ((feature.op === "=" && !featureData.canNumeratorBeZero) ||
+                      (feature.op === "<=" && !featureData.canNumeratorBeZero) ||
+                      feature.op === "<")) ||
                   (l === 0 &&
                     r === 0 &&
                     (!featureData.canNumeratorBeZero || !featureData.canDenominatorBeZero) &&
-                    (feature.r.op === "<" || feature.r.op === ">"));
+                    (feature.op === "<" || feature.op === ">"));
 
                 if (isImpossible) return "false";
 
                 const isAlways =
-                  (feature.r.op === ">=" &&
+                  (feature.op === ">=" &&
                     l === 0 &&
                     r !== 0 &&
                     !featureData.canDenominatorBeZero) ||
-                  (feature.r.op === ">" &&
+                  (feature.op === ">" &&
                     l === 0 &&
                     r !== 0 &&
                     !featureData.canNumeratorBeZero &&
                     featureData.canDenominatorBeZero) ||
-                  (feature.r.op === "<=" &&
+                  (feature.op === "<=" &&
                     l !== 0 &&
                     r === 0 &&
                     !(featureData.canNumeratorBeZero && featureData.canDenominatorBeZero)) ||
-                  (feature.r.op === "<" && l !== 0 && r === 0 && !featureData.canDenominatorBeZero);
+                  (feature.op === "<" && l !== 0 && r === 0 && !featureData.canDenominatorBeZero);
 
                 if (isAlways) return "true";
 
@@ -198,34 +210,34 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                 return "false";
               }
             } else if (featureData.valueType === "integer") {
-              if (isValueInteger(b)) {
+              if (isValueInteger(feature.value)) {
                 const isImpossible =
-                  (feature.r.op === "=" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === "=" && !featureData.canBeZero && b.v === 0) ||
-                  (feature.r.op === "<=" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === "<=" &&
+                  (feature.op === "=" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === "=" && !featureData.canBeZero && feature.value.value === 0) ||
+                  (feature.op === "<=" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === "<=" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 0) ||
-                  (feature.r.op === "<" && !featureData.canBeNegative && b.v <= 0) ||
-                  (feature.r.op === "<" &&
+                    feature.value.value === 0) ||
+                  (feature.op === "<" && !featureData.canBeNegative && feature.value.value <= 0) ||
+                  (feature.op === "<" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 1);
+                    feature.value.value === 1);
 
                 if (isImpossible) return "false";
 
                 const isAlways =
-                  (feature.r.op === ">=" && !featureData.canBeNegative && b.v <= 0) ||
-                  (feature.r.op === ">=" &&
+                  (feature.op === ">=" && !featureData.canBeNegative && feature.value.value <= 0) ||
+                  (feature.op === ">=" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 1) ||
-                  (feature.r.op === ">" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === ">" &&
+                    feature.value.value === 1) ||
+                  (feature.op === ">" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === ">" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 0);
+                    feature.value.value === 0);
 
                 if (isAlways) return "true";
 
@@ -234,26 +246,26 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                 return "false";
               }
             } else if (featureData.valueType === "length") {
-              if (isValueLength(b)) {
+              if (isValueLength(feature.value)) {
                 const isImpossible =
-                  (feature.r.op === "=" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === "=" && !featureData.canBeZero && b.v === 0) ||
-                  (feature.r.op === "<=" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === "<=" &&
+                  (feature.op === "=" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === "=" && !featureData.canBeZero && feature.value.value === 0) ||
+                  (feature.op === "<=" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === "<=" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 0) ||
-                  (feature.r.op === "<" && !featureData.canBeNegative && b.v <= 0);
+                    feature.value.value === 0) ||
+                  (feature.op === "<" && !featureData.canBeNegative && feature.value.value <= 0);
 
                 if (isImpossible) return "false";
 
                 const isAlways =
-                  (feature.r.op === ">=" && !featureData.canBeNegative && b.v <= 0) ||
-                  (feature.r.op === ">" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === ">" &&
+                  (feature.op === ">=" && !featureData.canBeNegative && feature.value.value <= 0) ||
+                  (feature.op === ">" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === ">" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 0);
+                    feature.value.value === 0);
 
                 if (isAlways) return "true";
 
@@ -262,26 +274,26 @@ export const solveMediaFeature_ = (feature: FeatureNode, config: SolverConfig): 
                 return "false";
               }
             } else {
-              if (isValueResolution(b)) {
+              if (isValueResolution(feature.value)) {
                 const isImpossible =
-                  (feature.r.op === "=" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === "=" && !featureData.canBeZero && b.v === 0) ||
-                  (feature.r.op === "<=" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === "<=" &&
+                  (feature.op === "=" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === "=" && !featureData.canBeZero && feature.value.value === 0) ||
+                  (feature.op === "<=" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === "<=" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 0) ||
-                  (feature.r.op === "<" && !featureData.canBeNegative && b.v <= 0);
+                    feature.value.value === 0) ||
+                  (feature.op === "<" && !featureData.canBeNegative && feature.value.value <= 0);
 
                 if (isImpossible) return "false";
 
                 const isAlways =
-                  (feature.r.op === ">=" && !featureData.canBeNegative && b.v <= 0) ||
-                  (feature.r.op === ">" && !featureData.canBeNegative && b.v < 0) ||
-                  (feature.r.op === ">" &&
+                  (feature.op === ">=" && !featureData.canBeNegative && feature.value.value <= 0) ||
+                  (feature.op === ">" && !featureData.canBeNegative && feature.value.value < 0) ||
+                  (feature.op === ">" &&
                     !featureData.canBeNegative &&
                     !featureData.canBeZero &&
-                    b.v === 0);
+                    feature.value.value === 0);
 
                 if (isAlways) return "true";
 

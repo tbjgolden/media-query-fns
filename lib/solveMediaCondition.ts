@@ -12,7 +12,7 @@ import { solveMediaInParens_ } from "./solveMediaInParens.js";
 
 export const solveMediaCondition = (
   condition: ConditionNode | ParserError,
-  configInput?: SolverConfigInput
+  configInput?: SolverConfigInput,
 ): Kleene3 =>
   isParserError(condition)
     ? "false"
@@ -20,16 +20,10 @@ export const solveMediaCondition = (
 
 export const solveMediaCondition_ = (condition: ConditionNode, config: SolverConfig): Kleene3 => {
   if (condition.op === "and") {
-    return and(
-      solveMediaInParens_(condition.a, config),
-      ...(condition.bs ?? []).map((inParens) => solveMediaInParens_(inParens, config))
-    );
+    return and(...condition.nodes.map((inParens) => solveMediaInParens_(inParens, config)));
   } else if (condition.op === "or") {
-    return or(
-      solveMediaInParens_(condition.a, config),
-      ...(condition.bs ?? []).map((inParens) => solveMediaInParens_(inParens, config))
-    );
+    return or(...condition.nodes.map((inParens) => solveMediaInParens_(inParens, config)));
   } else {
-    return not(solveMediaInParens_(condition.a, config));
+    return not(solveMediaInParens_(condition.nodes[0], config));
   }
 };
