@@ -198,6 +198,14 @@ test("matches aspect-ratio", () => {
   expect(check("(aspect-ratio > 1/100000)")).toBe(true);
   expect(check("(aspect-ratio > 1)")).toBe(true);
   expect(check("(aspect-ratio > 0.5)")).toBe(true);
+  expect(check("(16/10 >= aspect-ratio >= 16/10)")).toBe(true);
+  expect(check("(16/10 >= aspect-ratio > 16/10)")).toBe(false);
+  expect(check("(16/10 > aspect-ratio >= 16/10)")).toBe(false);
+  expect(check("(16/10 > aspect-ratio > 16/10)")).toBe(false);
+  expect(check("(1/100000 > aspect-ratio)")).toBe(false);
+  expect(check("(1/100000 < aspect-ratio)")).toBe(true);
+  expect(check("(1 < aspect-ratio)")).toBe(true);
+  expect(check("(0.5 < aspect-ratio)")).toBe(true);
 });
 
 test("matches color-index", () => {
@@ -209,6 +217,7 @@ test("matches color-index", () => {
   expect(check("(color-index > 128)", colors128)).toBe(false);
   expect(check("(color-index: 128)", colors128)).toBe(true);
   expect(check("(color-index <= 128)", colors128)).toBe(true);
+  expect(check("(128 >= color-index)", colors128)).toBe(true);
   expect(check("(color-index)", colors128)).toBe(true);
 });
 
@@ -224,8 +233,10 @@ test("matches monochrome", () => {
   expect(check("(monochrome)", monochrome2)).toBe(true);
   const monochrome8 = { monochromeBits: 8 } as const;
   expect(check("(monochrome > 2)", monochrome8)).toBe(true);
+  expect(check("(2 < monochrome)", monochrome8)).toBe(true);
   expect(check("(monochrome: 2)", monochrome8)).toBe(false);
   expect(check("(monochrome <= 2)", monochrome8)).toBe(false);
+  expect(check("(2 >= monochrome)", monochrome8)).toBe(false);
   expect(check("(monochrome)", monochrome8)).toBe(true);
   const blackAndWhite = { monochromeBits: 1 } as const;
   expect(check("(monochrome: 1)", blackAndWhite)).toBe(true);
