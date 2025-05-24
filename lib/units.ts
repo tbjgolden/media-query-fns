@@ -275,8 +275,8 @@ export type DoubleRange = {
   type: "double";
   name: keyof RangeFeatures;
   min: Unit;
-  minOp: "<" | "<=";
-  maxOp: "<" | "<=";
+  minOp: "<" | "<=" | ">" | ">=";
+  maxOp: "<" | "<=" | ">" | ">=";
   max: Unit;
 };
 export type SingleRange = {
@@ -329,7 +329,7 @@ export const simplifyMediaFeature = (
             name: feature,
             minOp: range.rightOp === ">" ? "<" : "<=",
             min: convertToUnit(range.rightToken, unitConversions),
-            maxOp: range.leftOp ? "<" : "<=",
+            maxOp: range.leftOp === ">" ? "<" : "<=",
             max: convertToUnit(range.leftToken, unitConversions),
           };
         }

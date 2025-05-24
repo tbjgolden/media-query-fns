@@ -229,13 +229,19 @@ export const mediaFeatureToPerms = (
         if (feature.op === "<") range = [true, [Number.NEGATIVE_INFINITY, 1], ratio, false];
         else if (feature.op === "<=") range = [true, [Number.NEGATIVE_INFINITY, 1], ratio, true];
         else if (feature.op === ">") range = [false, ratio, [Number.POSITIVE_INFINITY, 1], true];
+        else if (feature.op === ">=") range = [true, ratio, [Number.POSITIVE_INFINITY, 1], true];
         else range = [true, ratio, [Number.POSITIVE_INFINITY, 1], true];
       }
     } else if (feature.type === "double") {
       const minRatio = getRatio(feature.min);
       const maxRatio = getRatio(feature.max);
       if (minRatio !== null && maxRatio !== null) {
-        range = [feature.minOp === "<=", minRatio, maxRatio, feature.maxOp === "<="];
+        range = [
+          feature.minOp === "<=" || feature.minOp === ">=",
+          minRatio,
+          maxRatio,
+          feature.maxOp === "<=" || feature.maxOp === ">=",
+        ];
       }
     }
 
