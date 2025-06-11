@@ -25,14 +25,27 @@ test("matches width", () => {
   expect(check("(min-width: 1400px)")).toBe(false);
   expect(check("(width = 1280px)")).toBe(true);
   expect(check("(1280px = width)")).toBe(true);
+
   expect(check("(1280px <= width <= 1280px)")).toBe(true);
+  expect(check("(280px <= width <= 1280px)")).toBe(true);
   expect(check("(1280px < width <= 1280px)")).toBe(false);
   expect(check("(1280px <= width < 1280px)")).toBe(false);
   expect(check("(1280px < width < 1280px)")).toBe(false);
   expect(check("(1279.9px < width < 1280.1px)")).toBe(true);
   expect(check("(12in < width < 35cm)")).toBe(true);
   expect(check("(10000Q < width < 101vw)")).toBe(true);
+  expect(check("(width < -1px)")).toBe(false);
+
   expect(check("(-1px < width < 10000px)")).toBe(true);
+  expect(check("(1280px >= width >= 1280px)")).toBe(true);
+  expect(check("(1280px >= width >= 280px)")).toBe(true);
+  expect(check("(1280px > width >= 1280px)")).toBe(false);
+  expect(check("(1280px >= width > 1280px)")).toBe(false);
+  expect(check("(1280px > width > 1280px)")).toBe(false);
+  expect(check("(1280.1px > width > 1279.9px)")).toBe(true);
+  expect(check("(35cm > width > 12in)")).toBe(true);
+  expect(check("(101vw > width > 10000Q)")).toBe(true);
+  expect(check("(10000px > width > -1px)")).toBe(true);
   expect(check("(-1px > width)")).toBe(false);
 });
 
@@ -185,6 +198,14 @@ test("matches aspect-ratio", () => {
   expect(check("(aspect-ratio > 1/100000)")).toBe(true);
   expect(check("(aspect-ratio > 1)")).toBe(true);
   expect(check("(aspect-ratio > 0.5)")).toBe(true);
+  expect(check("(16/10 >= aspect-ratio >= 16/10)")).toBe(true);
+  expect(check("(16/10 >= aspect-ratio > 16/10)")).toBe(false);
+  expect(check("(16/10 > aspect-ratio >= 16/10)")).toBe(false);
+  expect(check("(16/10 > aspect-ratio > 16/10)")).toBe(false);
+  expect(check("(1/100000 > aspect-ratio)")).toBe(false);
+  expect(check("(1/100000 < aspect-ratio)")).toBe(true);
+  expect(check("(1 < aspect-ratio)")).toBe(true);
+  expect(check("(0.5 < aspect-ratio)")).toBe(true);
 });
 
 test("matches color-index", () => {
@@ -196,6 +217,7 @@ test("matches color-index", () => {
   expect(check("(color-index > 128)", colors128)).toBe(false);
   expect(check("(color-index: 128)", colors128)).toBe(true);
   expect(check("(color-index <= 128)", colors128)).toBe(true);
+  expect(check("(128 >= color-index)", colors128)).toBe(true);
   expect(check("(color-index)", colors128)).toBe(true);
 });
 
@@ -211,8 +233,10 @@ test("matches monochrome", () => {
   expect(check("(monochrome)", monochrome2)).toBe(true);
   const monochrome8 = { monochromeBits: 8 } as const;
   expect(check("(monochrome > 2)", monochrome8)).toBe(true);
+  expect(check("(2 < monochrome)", monochrome8)).toBe(true);
   expect(check("(monochrome: 2)", monochrome8)).toBe(false);
   expect(check("(monochrome <= 2)", monochrome8)).toBe(false);
+  expect(check("(2 >= monochrome)", monochrome8)).toBe(false);
   expect(check("(monochrome)", monochrome8)).toBe(true);
   const blackAndWhite = { monochromeBits: 1 } as const;
   expect(check("(monochrome: 1)", blackAndWhite)).toBe(true);

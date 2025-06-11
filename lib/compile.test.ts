@@ -25,6 +25,14 @@ test("evaluateQuery", () => {
       },
     ])
   );
+  expect(compileQuery("(150px >= width > 50px)")).toEqual(
+    simplifyPerms([
+      {
+        "media-type": "all",
+        width: [false, 50, 150, true],
+      },
+    ])
+  );
 });
 
 test("checking hyphenated keys", () => {
