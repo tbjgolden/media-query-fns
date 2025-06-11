@@ -33,6 +33,11 @@ import {
   UnitConversions,
 } from "./units.js";
 
+export type CompileOptions = {
+  shouldAllowNonZeroUnitlessPxLengths: boolean;
+};
+const DEFAULT_COMPILE_OPTIONS = { shouldAllowNonZeroUnitlessPxLengths: false };
+
 export type SimplePerm = Partial<
   MediaFeatures & {
     "media-type": "screen" | "print" | "not-screen" | "not-print";
@@ -177,7 +182,8 @@ export const invertPerm = (set: Perm): Perm[] => {
 
 export const mediaFeatureToPerms = (
   mediaFeature: MediaFeature,
-  unitConversions: CompiledUnitConversions
+  unitConversions: CompiledUnitConversions,
+  options: CompileOptions = DEFAULT_COMPILE_OPTIONS
 ): Perm[] => {
   const feature = simplifyMediaFeature(mediaFeature, unitConversions);
   const INVALID = [{ "invalid-features": [mediaFeature.feature] }];
@@ -250,10 +256,10 @@ export const mediaFeatureToPerms = (
     let range: ConditionRange | null = null;
 
     if (feature.type === "equals") {
-      const value = getValue(feature.value, feature.name);
+      const value = getValue(feature.value, feature.name, options);
       if (value !== null) range = [true, value, value, true];
     } else if (feature.type === "single") {
-      const value = getValue(feature.value, feature.name);
+      const value = getValue(feature.value, feature.name, options);
       if (value !== null) {
         if (feature.op === "<") range = [true, Number.NEGATIVE_INFINITY, value, false];
         else if (feature.op === "<=") range = [true, Number.NEGATIVE_INFINITY, value, true];
@@ -261,8 +267,8 @@ export const mediaFeatureToPerms = (
         else range = [true, value, Number.POSITIVE_INFINITY, true];
       }
     } else if (feature.type === "double") {
-      const minValue = getValue(feature.min, feature.name);
-      const maxValue = getValue(feature.max, feature.name);
+      const minValue = getValue(feature.min, feature.name, options);
+      const maxValue = getValue(feature.max, feature.name, options);
       if (minValue !== null && maxValue !== null) {
         range = [feature.minOp === "<=", minValue, maxValue, feature.maxOp === "<="];
       }
@@ -274,14 +280,15 @@ export const mediaFeatureToPerms = (
 
 export const mediaConditionToPerms = (
   mediaCondition: MediaCondition,
-  unitConversions: CompiledUnitConversions
+  unitConversions: CompiledUnitConversions,
+  options: CompileOptions = DEFAULT_COMPILE_OPTIONS
 ): Perm[] => {
   const conditionSetsSets: Perm[][] = [];
   for (const child of mediaCondition.children) {
     if ("context" in child) {
-      conditionSetsSets.push(mediaFeatureToPerms(child, unitConversions));
+      conditionSetsSets.push(mediaFeatureToPerms(child, unitConversions, options));
     } else {
-      conditionSetsSets.push(mediaConditionToPerms(child, unitConversions));
+      conditionSetsSets.push(mediaConditionToPerms(child, unitConversions, options));
     }
   }
   if (mediaCondition.operator === "or" || mediaCondition.operator === undefined) {
@@ -354,7 +361,8 @@ export const simplifyPerms = (perms: Perm[]): EvaluateResult => {
 
 export const compileAST = (
   mediaQueryList: MediaQueryList,
-  units: Partial<UnitConversions> = {}
+  units: Partial<UnitConversions> = {},
+  options: CompileOptions = DEFAULT_COMPILE_OPTIONS
 ): EvaluateResult => {
   const unitConversions = compileStaticUnitConversions(units);
   const allConditions: Perm[] = [];
@@ -374,7 +382,7 @@ export const compileAST = (
 
       if (mediaQuery.mediaCondition !== undefined) {
         extraConditions.push(
-          ...notPerms(mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions))
+          ...notPerms(mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions, options))
         );
       }
     } else {
@@ -384,7 +392,7 @@ export const compileAST = (
         });
       } else {
         extraConditions.push(
-          ...mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions).map(
+          ...mediaConditionToPerms(mediaQuery.mediaCondition, unitConversions, options).map(
             (conditionSet) => ({
               ...conditionSet,
               "media-type": mediaQuery.mediaType,
@@ -402,7 +410,8 @@ export const compileAST = (
 
 export const compileQuery = (
   query: string,
-  units: Partial<UnitConversions> = {}
+  units: Partial<UnitConversions> = {},
+  options: CompileOptions = DEFAULT_COMPILE_OPTIONS
 ): EvaluateResult => {
   const mediaQueryList = parseMediaQueryList(query);
   if (isParserError(mediaQueryList)) {
@@ -410,6 +419,6 @@ export const compileQuery = (
       `Error parsing media query list: ${mediaQueryList.errid} at chars ${mediaQueryList.start}:${mediaQueryList.end}`
     );
   } else {
-    return compileAST(mediaQueryList, units);
+    return compileAST(mediaQueryList, units, options);
   }
 };

@@ -7,6 +7,7 @@ import {
   RangeNumberFeatures,
   RANGE_NUMBER_FEATURES,
 } from "./helpers.js";
+import { CompileOptions } from "./compile.js";
 
 export type LengthUnit = {
   type: "dimension";
@@ -457,7 +458,11 @@ export const getRatio = (unit: Unit): null | readonly [number, number] => {
   }
 };
 
-export const getValue = (unit: Unit, name: keyof RangeNumberFeatures): null | number => {
+export const getValue = (
+  unit: Unit,
+  name: keyof RangeNumberFeatures,
+  options: CompileOptions
+): null | number => {
   // eslint-disable-next-line security/detect-object-injection
   const featData = RANGE_NUMBER_FEATURES[name];
   if (unit.type === "infinite") {
@@ -473,8 +478,11 @@ export const getValue = (unit: Unit, name: keyof RangeNumberFeatures): null | nu
   } else if (featData.type === "length") {
     if (unit.type === "dimension" && unit.subtype === "length") {
       return unit.px;
-    } else if (unit.type === "number" && unit.value === 0) {
-      return 0;
+    } else if (
+      unit.type === "number" &&
+      (unit.value === 0 || options.shouldAllowNonZeroUnitlessPxLengths)
+    ) {
+      return unit.value;
     }
   }
   return null;
