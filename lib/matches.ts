@@ -504,6 +504,7 @@ export const matches = (
         const max = maxRatio[0] / maxRatio[1];
         const aspectRatio = env.widthPx / env.heightPx;
         if (
+          Number.isNaN(aspectRatio) ||
           aspectRatio < min ||
           aspectRatio > max ||
           (min === aspectRatio && !minInclusive) ||

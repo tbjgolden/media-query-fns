@@ -206,6 +206,10 @@ test("matches aspect-ratio", () => {
   expect(check("(1/100000 < aspect-ratio)")).toBe(true);
   expect(check("(1 < aspect-ratio)")).toBe(true);
   expect(check("(0.5 < aspect-ratio)")).toBe(true);
+  const noSize = { widthPx: 0, heightPx: 0, deviceWidthPx: 0, deviceHeightPx: 0 };
+  expect(check("(aspect-ratio: 1/1)", noSize)).toBe(false);
+  expect(check("(min-aspect-ratio: 1/1)", noSize)).toBe(false);
+  expect(check("(max-aspect-ratio: 1/1)", noSize)).toBe(false);
 });
 
 test("matches color-index", () => {
