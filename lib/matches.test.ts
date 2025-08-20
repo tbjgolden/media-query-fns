@@ -283,6 +283,10 @@ test("matches others", () => {
   expect(check("(min-device-aspect-ratio: 1)")).toBe(true);
   expect(check("(device-aspect-ratio: 1/2)")).toBe(false);
   expect(check("not (device-aspect-ratio)")).toBe(false);
+  const noSize = { widthPx: 0, heightPx: 0, deviceWidthPx: 0, deviceHeightPx: 0 };
+  expect(check("(device-aspect-ratio: 1/1)", noSize)).toBe(false);
+  expect(check("(min-device-aspect-ratio: 1/1)", noSize)).toBe(false);
+  expect(check("(max-device-aspect-ratio: 1/1)", noSize)).toBe(false);
   expect(check("(height: 800px)")).toBe(true);
   expect(check("(max-height: 1000px)")).toBe(true);
   expect(check("(min-height: 1000px)")).toBe(false);
