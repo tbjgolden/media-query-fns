@@ -1,7 +1,7 @@
 {
   "name": "media-query-fns",
   "description": "Useful functions for working with CSS media queries in JS/TS",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "license": "MIT",
   "keywords": [
     "media",
