@@ -518,12 +518,13 @@ export const matches = (
         const [minInclusive, minRatio, maxRatio, maxInclusive] = p[k];
         const min = minRatio[0] / minRatio[1];
         const max = maxRatio[0] / maxRatio[1];
-        const aspectRatio = env.deviceWidthPx / env.deviceHeightPx;
+        const deviceAspectRatio = env.deviceWidthPx / env.deviceHeightPx;
         if (
-          aspectRatio < min ||
-          aspectRatio > max ||
-          (min === aspectRatio && !minInclusive) ||
-          (max === aspectRatio && !maxInclusive)
+          Number.isNaN(deviceAspectRatio) ||
+          deviceAspectRatio < min ||
+          deviceAspectRatio > max ||
+          (min === deviceAspectRatio && !minInclusive) ||
+          (max === deviceAspectRatio && !maxInclusive)
         ) {
           matches = false;
           break;
